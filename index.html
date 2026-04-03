@@ -482,20 +482,25 @@ function renderPainel(){
   if(ME&&ME.setor&&ME.setor!=='todos'){$('setor-badge').textContent='Seu setor: '+SL[ME.setor];$('setor-badge').style.display='';}
   var allCols=SETORES.concat(['retirada']);
   $('kanban').innerHTML=allCols.map(function(setor){
+    // Pedidos ativos neste setor (em_andamento, faturado)
     var items=PEDIDOS.filter(function(o){return o.setor===setor&&o.status!=='finalizado'&&o.status!=='aguardando';});
-    var chegando=TRANSITOS.filter(function(t){return t.setor_destino===setor;});
+    // Pedidos aguardando confirmação NESTE setor (setor_pendente = setor)
+    var chegando=PEDIDOS.filter(function(o){return o.status==='aguardando'&&o.setor_pendente===setor;});
     return '<div class="kcol">'+
-      '<div class="ch"><div class="cdot" style="background:'+SD[setor]+'"></div><span class="cn">'+SL[setor]+'</span><span class="cc">'+items.length+(chegando.length?' +'+chegando.length+'⌛':'')+'</span></div>'+
+      '<div class="ch"><div class="cdot" style="background:'+SD[setor]+'"></div><span class="cn">'+SL[setor]+'</span><span class="cc">'+(items.length+chegando.length)+(chegando.length?' ('+chegando.length+'⌛)':'')+'</span></div>'+
       chegando.map(renderTransCard).join('')+
       items.map(function(o){return renderCard(o,setor);}).join('')+
     '</div>';
   }).join('');
 }
 
-function renderTransCard(t){
-  var p=getPedido(t.pedido_id),num=p?p.numero:'?',cli=p?p.nome_cliente:'',prio=p?p.prioridade:'normal';
-  var elapsed=now()-tsMs(t.enviado_at),alerta=elapsed>ALERT_MS;
-  var canConfirm=ME&&(ME.role==='admin'||ME.setor===t.setor_destino);
+function renderTransCard(o){
+  // o é um PEDIDO com status=aguardando
+  var num=o.numero||'?',cli=o.nome_cliente||'',prio=o.prioridade||'normal';
+  var elapsed=now()-tsMs(o.pendente_desde),alerta=elapsed>ALERT_MS;
+  var destino=o.setor_pendente||'';
+  var origem=o.setor||'';
+  var canConfirm=ME&&(ME.role==='admin'||ME.setor==='todos'||ME.setor===destino);
   var prioClass=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
   return '<div class="card transito'+(alerta?' transito-alert':'')+' '+prioClass+'">'+
     '<div class="transit-lbl'+(alerta?' alerta':'')+'">'+((alerta?'⚠ Aguardando há ':'⌛ Aguard. confirmação há ')+fmtT(elapsed))+'</div>'+
@@ -503,9 +508,9 @@ function renderTransCard(t){
     prioBadge(prio)+
     '</div>'+
     (cli?'<div class="card-cli">'+cli+'</div>':'')+
-    '<div class="card-meta">De: '+SL[t.setor_origem]+'</div>'+
+    '<div class="card-meta">De: '+SL[origem]+'</div>'+
     '<div class="card-actions" style="margin-top:8px">'+
-    (canConfirm?'<button class="bconfirm" onclick="confirmarRec(\''+t.pedido_id+'\')">✓ Confirmar Recebimento</button>':
+    (canConfirm?'<button class="bconfirm" onclick="confirmarRec(\''+o.id+'\')">✓ Confirmar Recebimento</button>':
     '<span style="font-size:11px;color:var(--muted)">Aguardando operador do setor</span>')+
     '</div></div>';
 }
