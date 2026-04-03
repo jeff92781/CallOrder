@@ -474,7 +474,7 @@ function renderTransCard(t){
   return '<div class="card transito'+(alerta?' transito-alert':'')+' '+prioClass+'">'+
     '<div class="transit-lbl'+(alerta?' alerta':'')+'">'+((alerta?'⚠ Aguardando há ':'⌛ Em trânsito há ')+fmtT(elapsed))+'</div>'+
     '<div class="card-top"><span class="card-num">#'+num+'</span>'+
-    (prio!=='normal'?'<span class="pb-badge pb-'+prio+'">'+prio.charAt(0).toUpperCase()+prio.slice(1)+'</span>':'')+
+    ((prio&&prio!=='normal')?'<span class="pb-badge pb-'+prio+'">'+prio.charAt(0).toUpperCase()+prio.slice(1)+'</span>':'')+
     '</div>'+
     (cli?'<div class="card-cli">'+cli+'</div>':'')+
     '<div class="card-meta">De: '+SL[t.setor_origem]+'</div>'+
@@ -487,7 +487,7 @@ function renderTransCard(t){
 function renderCard(o,setor){
   var totalMs=now()-tsMs(o.entrada_at),setorMs=now()-tsMs(o.setor_entrada_at);
   var tC=totalMs>45*60000?'danger':totalMs>25*60000?'warn':'';
-  var pC=o.prioridade==='idoso'?'prio-idoso':o.prioridade==='gestante'?'prio-gestante':'';
+  var pC=(o.prioridade||'')==='idoso'?'prio-idoso':(o.prioridade||'')==='gestante'?'prio-gestante':'';
   var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
   var idx=SETORES.indexOf(setor);
   var canAct=ME&&(ME.role==='admin'||ME.setor==='todos'||ME.setor===setor);
@@ -499,7 +499,7 @@ function renderCard(o,setor){
   }
   return '<div class="card '+pC+'">'+
     '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+
-    (o.prioridade!=='normal'?'<span class="pb-badge pb-'+o.prioridade+'">'+o.prioridade.charAt(0).toUpperCase()+o.prioridade.slice(1)+'</span>':'')+
+    ((o.prioridade&&o.prioridade!=='normal')?'<span class="pb-badge pb-'+o.prioridade+'">'+o.prioridade.charAt(0).toUpperCase()+o.prioridade.slice(1)+'</span>':'')+
     '</div>'+
     (o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+
     '<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>'+
