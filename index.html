@@ -467,7 +467,13 @@ function startRealtime(){
       if(payload.new.status==='aguardando'&&(!old||old.status!=='aguardando')){
         var dest=payload.new.setor_pendente;
         var _ms=ME?ME.setor:'';
-        var ehMeu=ME&&(ME.role==='admin'||_ms==='todos'||_ms===dest||_ms==='atendimento'||(_ms==='separacao'&&dest==='retirada'));
+        var ehMeu=ME&&(
+  ME.role==='admin' ||
+  _ms==='todos' ||
+  _ms===dest ||
+  (_ms==='separacao' && dest==='retirada') ||
+  (_ms==='atendimento' && dest==='faturamento')
+);
         if(ehMeu)toast('Pedido #'+payload.new.numero+' aguardando confirmação em '+(SL[dest]||dest)+'!','warn',6000);
       }
     }
@@ -593,12 +599,13 @@ function renderTransCard(o){
   var origem = o.setor || '';
   var _ms    = ME ? ME.setor : '';
 
-  var canC = ME && (
-    ME.role === 'admin' ||
-    _ms === 'todos' ||
-    _ms === dest ||
-    (_ms === 'separacao' && dest === 'retirada')
-  );
+  var canC=ME&&(
+  ME.role==='admin' ||
+  _ms==='todos' ||
+  _ms===dest ||
+  (_ms==='separacao' && dest==='retirada') ||
+  (_ms==='atendimento' && dest==='faturamento')
+);
 
   // somente admin, todos, ou o SETOR ANTERIOR pode retornar
   var canR = ME && (
@@ -645,9 +652,26 @@ function renderCard(o,setor){
   var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
   var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
   var idx=SETORES.indexOf(setor),_s=ME?ME.setor:'';
-  var canAct=ME&&(ME.role==='admin'||_s==='todos'||_s===setor);
-  var canFat=ME&&(ME.role==='admin'||_s==='todos'||_s==='faturamento'||_s==='atendimento');
-  var canRet=ME&&(ME.role==='admin'||_s==='todos'||_s==='separacao');
+  var canAct=ME&&(
+  ME.role==='admin' ||
+  _s==='todos' ||
+  _s===setor ||
+  (_s==='separacao' && setor==='retirada') ||
+  (_s==='atendimento' && setor==='faturamento')
+);
+
+var canFat=ME&&(
+  ME.role==='admin' ||
+  _s==='todos' ||
+  _s==='faturamento' ||
+  _s==='atendimento'
+);
+
+var canRet=ME&&(
+  ME.role==='admin' ||
+  _s==='todos' ||
+  _s==='separacao'
+);
 
   var actions='';
 
