@@ -692,38 +692,19 @@ function renderTransCard(o){
   var canC=canDo(_recKey[dest]||'');
   var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
   var sC=alerta?'cd':elapsed>3*60000?'cw':'';
-  return '<div class="card transito '+pC+' '+sC+'"><div class="tlbl"><span class="dp"></span>'+(alerta?'Aguardando há ':'Aguard. confirmação há ')+fmtT(elapsed)+'</div><div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+(o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+'<div class="card-meta">De: '+(SL[o.setor]||o.setor)+'</div><div class="ca">'+(canC?'<button class="bcon" onclick="confirmarRec(\''+o.id+'\')">✓ Confirmar Recebimento</button>':'<span style="font-size:11px;color:var(--muted)">Aguardando operador do setor</span>')+'</div></div>';
+  var html='<div class="card '+pC+'">';
+  html+='<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>';
+  html+=(o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'');
+  html+='<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>';
+  html+=(o.num_nota?'<div class="card-nota">NF: '+o.num_nota+'</div>':'');
+  html+='<div class="ct">';
+  html+='<div class="ti"><span class="tl">Neste setor</span><span class="tv '+tC+'">'+fmtT(setorMs)+'</span></div>';
+  html+='<div class="ti"><span class="tl">Total</span><span class="tv '+tC+'">'+fmtT(totalMs)+'</span></div>';
+  html+='</div>';
+  html+=(allActions?'<div class="ca">'+allActions+'</div>':'');
+  html+='</div>';
+  return html;
 }
-function renderCard(o,setor){
-  var totalMs=now()-tsMs(o.entrada_at),setorMs=now()-tsMs(o.setor_entrada_at);
-  var tC=totalMs>45*60000?'danger':totalMs>25*60000?'warn':'';
-  var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
-  var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
-  var idx=SETORES.indexOf(setor);
-  var canEnvAt  = canDo('at_enviar')   && setor==='atendimento';
-  var canEnvCo  = canDo('co_enviar')   && setor==='corte';
-  var canEnvSe  = canDo('se_enviar')   && setor==='separacao';
-  var canFat    = canDo('fa_faturar')  && setor==='faturamento';
-  var canRetB   = canDo('se_retirada') && setor==='retirada';
-  var canEnviar = canEnvAt||canEnvCo||canEnvSe;
-  var actions='';
-  if(setor==='faturamento'&&canFat) actions='<button class="bfin" onclick="openNota("'+o.id+'")">Faturar →</button>';
-  else if(setor==='retirada'&&canRetB) actions='<button class="bfin" onclick="finalizarPedido("'+o.id+'")">Retirado ✓</button>';
-  else if(idx>=0&&idx<SETORES.length-1&&canEnviar) actions='<button class="bmv" onclick="enviar("'+o.id+'","'+SETORES[idx+1]+'")">→ '+SL[SETORES[idx+1]]+'</button>';
-  var canVolta=(ME&&ME.role==='admin')||canEnviar;
-  var btnRet=(canVolta&&idx>0&&o.status==='em_andamento')?'<button class="bret" onclick="retornarPedido("'+o.id+'")">↩ Retornar</button>':'';
-  var allActions=actions+btnRet;
-  return '<div class="card '+pC+'">'+
-    '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+
-    (o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+
-    '<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>'+
-    (o.num_nota?'<div class="card-nota">NF: '+o.num_nota+'</div>':'')+
-    '<div class="ct">'+
-      '<div class="ti"><span class="tl">Neste setor</span><span class="tv '+tC+'">'+fmtT(setorMs)+'</span></div>'+
-      '<div class="ti"><span class="tl">Total</span><span class="tv '+tC+'">'+fmtT(totalMs)+'</span></div>'+
-    '</div>'+
-    (allActions?'<div class="ca">'+allActions+'</div>':'')+
-  '</div>';
 }
 }
 async function retornarPedido(id){
