@@ -292,7 +292,14 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
   </main>
 </div>
 
-<div id="screen-tv-pub" style="display:none;background:#07070a;min-height:100vh;padding:24px;font-family:var(--font-mono)">
+<div id="screen-tv-pub" style="display:none;background:#07070a;min-height:100vh;padding:24px;font-family:var(--font-mono);position:relative">
+  <div id="tv-audio-unlock" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(7,7,10,.86);z-index:99999">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 28px;background:#18181c;border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,.35)">
+      <div style="font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--atend)">Ativar áudio da TV</div>
+      <div style="font-size:13px;color:var(--muted);text-align:center;max-width:360px">Clique uma vez para liberar as chamadas por voz nesta tela.</div>
+      <button id="tv-audio-btn" style="padding:18px 28px;border:none;border-radius:12px;font-family:var(--font-mono);font-size:18px;font-weight:600;background:#5DCAA5;color:#04342C;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.35);">🔊 Ativar áudio da TV</button>
+    </div>
+  </div>
   <div style="display:flex;align-items:center;margin-bottom:24px;gap:16px">
     <span style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--atend)">Call Order</span>
     <span style="color:var(--muted);font-size:13px">Acompanhamento em tempo real</span>
@@ -358,8 +365,7 @@ const BC = {atendimento:'#5DCAA5',corte:'#85B7EB',separacao:'#FAC775',faturament
 const ALERT_MS = 5*60*1000;
 let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null;
 let _tvPub=[], _tvAudioReady=false, _tvLastSnapshot='';
-let _tvSpeakQueue=[], _tvSpeaking=false, _tvCurrentTimer=null;
-let _tvQueuedKeys={};
+let _tvSpeakQueue=[], _tvSpeaking=false;
 const el = id => document.getElementById(id);
 const now = () => Date.now();
 const tsMs = ts => ts ? new Date(ts).getTime() : 0;
@@ -744,30 +750,32 @@ function unlockTVAudio() {
   _tvAudioReady = true;
 
   try {
-    if (window.speechSynthesis && window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+    var prime = new SpeechSynthesisUtterance(' ');
+    prime.volume = 0;
+    prime.rate = 1;
+    prime.pitch = 1;
+    prime.lang = 'pt-BR';
+    window.speechSynthesis.speak(prime);
   } catch(e) {}
 
-  var btn = document.getElementById('tv-audio-unlock');
-  if (btn) btn.remove();
+  var wrap = document.getElementById('tv-audio-unlock');
+  if (wrap) wrap.style.display = 'none';
 
-  anunciarTVPublica(_tvPub);
+  toast('Áudio da TV ativado.','ok',2500);
   processarFilaTV();
 }
 
 function renderTVAudioUnlock() {
-  if (!el('screen-tv-pub')) return;
-  if (document.getElementById('tv-audio-unlock')) return;
-
-  var wrap = document.createElement('div');
-  wrap.id = 'tv-audio-unlock';
-  wrap.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,7,10,.82);z-index:99999;';
-
-  wrap.innerHTML = '<button id="tv-audio-btn" style="padding:18px 28px;border:none;border-radius:12px;font-family:var(--font-mono);font-size:18px;font-weight:600;background:#5DCAA5;color:#04342C;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.35);">🔊 Ativar áudio da TV</button>';
-
-  document.body.appendChild(wrap);
-  document.getElementById('tv-audio-btn').addEventListener('click', unlockTVAudio);
+  var wrap = document.getElementById('tv-audio-unlock');
+  var btn = document.getElementById('tv-audio-btn');
+  if (!wrap || !btn) return;
+  wrap.style.display = _tvAudioReady ? 'none' : 'flex';
+  if (!btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', unlockTVAudio);
+  }
 }
 
 function criarUtterance(texto) {
@@ -784,68 +792,64 @@ function criarUtterance(texto) {
   return u;
 }
 
-function estimarTempoFala(texto) {
-  var palavras = (texto || '').trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(3500, palavras * 520);
-}
-
-function finalizarFalaTV() {
-  if (_tvCurrentTimer) {
-    clearTimeout(_tvCurrentTimer);
-    _tvCurrentTimer = null;
-  }
-  _tvSpeaking = false;
-  setTimeout(processarFilaTV, 200);
-}
-
 function processarFilaTV() {
   if (!_tvAudioReady || !window.speechSynthesis || _tvSpeaking || !_tvSpeakQueue.length) return;
 
   _tvSpeaking = true;
-  var item = _tvSpeakQueue.shift();
-  delete _tvQueuedKeys[item.key];
-  sessionStorage.setItem(item.key, '1');
+  var texto = _tvSpeakQueue.shift();
+  var u = criarUtterance(texto);
+  var fallbackMs = Math.max(3500, Math.min(12000, texto.length * 95));
+  var finalizado = false;
+  var fallback = setTimeout(function(){
+    if (finalizado) return;
+    finalizado = true;
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+    _tvSpeaking = false;
+    setTimeout(processarFilaTV, 200);
+  }, fallbackMs);
 
-  var u = criarUtterance(item.texto);
-  var encerrado = false;
-
-  function concluir() {
-    if (encerrado) return;
-    encerrado = true;
-    finalizarFalaTV();
+  function liberarFila(){
+    if (finalizado) return;
+    finalizado = true;
+    clearTimeout(fallback);
+    _tvSpeaking = false;
+    setTimeout(processarFilaTV, 200);
   }
 
-  u.onend = concluir;
-  u.onerror = concluir;
-
-  _tvCurrentTimer = setTimeout(concluir, estimarTempoFala(item.texto));
+  u.onend = liberarFila;
+  u.onerror = liberarFila;
 
   try {
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(u);
   } catch(e) {
-    concluir();
+    liberarFila();
   }
 }
 
-function enfileirarChamadaTV(key, texto) {
-  if (_tvQueuedKeys[key]) return;
-  _tvQueuedKeys[key] = true;
-  _tvSpeakQueue.push({ key:key, texto:texto });
+function enfileirarChamadaTV(texto) {
+  _tvSpeakQueue.push(texto);
   processarFilaTV();
 }
 
 function anunciarTVPublica(listaAtual) {
-  if (!_tvAudioReady || !window.speechSynthesis) return;
+  var novos = listaAtual.filter(function(o) {
+    return o.setor === 'retirada' && o.status === 'faturado';
+  }).sort(function(a,b){
+    return tsMs(a.setor_entrada_at) - tsMs(b.setor_entrada_at);
+  });
 
-  listaAtual
-    .filter(function(o){ return o.setor === 'retirada' && o.status === 'faturado'; })
-    .sort(function(a,b){ return tsMs(a.setor_entrada_at) - tsMs(b.setor_entrada_at); })
-    .forEach(function(o) {
-      var key = 'tv_call_' + o.id + '_' + tsMs(o.setor_entrada_at);
-      if (sessionStorage.getItem(key)) return;
-      enfileirarChamadaTV(key, 'Pedido ' + o.numero + ', por favor dirija-se ao balcão para retirar sua mercadoria.');
-    });
+  novos.forEach(function(o) {
+    var memoria = 'tv_call_confirmed_' + o.id + '_' + (o.setor_entrada_at || '');
+    if (sessionStorage.getItem(memoria)) return;
+    sessionStorage.setItem(memoria, '1');
+
+    toast('Chamada liberada: pedido #' + o.numero + ' para retirada.','move',5000);
+
+    if (_tvAudioReady && window.speechSynthesis) {
+      enfileirarChamadaTV('Pedido ' + o.numero + ', por favor dirija-se ao balcão para retirar sua mercadoria.');
+    }
+  });
 }
 
 async function iniciarTVPublica(){
@@ -858,12 +862,15 @@ async function iniciarTVPublica(){
 
   async function carregarTVPublica(){
     try{
-      var hoje=new Date();hoje.setHours(0,0,0,0);
+      var hoje=new Date();
+      hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.faturado').order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       renderTVPub();
       anunciarTVPublica(_tvPub);
-    }catch(e){}
+    }catch(e){
+      console.error('Falha ao carregar TV pública', e);
+    }
   }
 
   await carregarTVPublica();
@@ -873,11 +880,18 @@ function renderTVPub(){
   var active=_tvPub.filter(function(o){return o.status!=='finalizado';});
   if(!el('tvp-body'))return;
   el('tvp-body').innerHTML=active.sort(function(a,b){return tsMs(b.entrada_at)-tsMs(a.entrada_at);}).map(function(o){
-    var totalMs=now()-tsMs(o.entrada_at),setorMs=o.status==='aguardando'?now()-tsMs(o.pendente_desde):now()-tsMs(o.setor_entrada_at);
+    var totalBase = tsMs(o.entrada_at) || now();
+    var isWaiting = o.status==='aguardando' && !!o.setor_pendente;
+    var setorBase = isWaiting ? (tsMs(o.pendente_desde) || tsMs(o.setor_entrada_at) || totalBase) : (tsMs(o.setor_entrada_at) || totalBase);
+    var totalMs=now()-totalBase;
+    var setorMs=now()-setorBase;
     var rC=totalMs>45*60000?'tv-row-danger':totalMs>25*60000?'tv-row-warn':'';
     var tColor=totalMs>45*60000?'var(--danger)':totalMs>25*60000?'var(--warn)':'var(--text)';
-    var sl='<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span>';
-    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim">'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'">'+fmtTs(totalMs)+'</span></td><td><span style="font-size:12px;color:var(--muted)">'+(o.status==='faturado'?'✓ Faturado':o.status==='aguardando'?'Aguard. confirmação':'Em andamento')+'</span></td></tr>';
+    var sl=isWaiting
+      ? '<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span> <span style="font-size:11px;color:var(--corte)">→ '+(SL[o.setor_pendente]||o.setor_pendente||'')+'</span>'
+      : '<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span>';
+    var statusLabel = o.status==='faturado' ? '✓ Faturado' : isWaiting ? 'Aguard. confirmação' : 'Em andamento';
+    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim">'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'">'+fmtTs(totalMs)+'</span></td><td><span style="font-size:12px;color:var(--muted)">'+statusLabel+'</span></td></tr>';
   }).join('');
   var done=_tvPub.filter(function(o){return o.status==='finalizado';});
   var avgMs=done.length?done.reduce(function(s,o){return s+(tsMs(o.finalizado_at)-tsMs(o.entrada_at));},0)/done.length:0;
