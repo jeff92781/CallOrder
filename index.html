@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Call Order</title>
+<title>PedidoFlow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -163,7 +163,7 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
 <div id="ov" class="h">Carregando...</div>
 <div id="tw"></div>
 <nav id="main-nav" style="display:none">
-  <span class="logo">Call <span>Order</span></span>
+  <span class="logo">Pedido<span>Flow</span></span>
   <div class="nav-tabs">
     <button class="tab active" onclick="go('painel')">Painel</button>
     <button class="tab" onclick="go('tv')">Tela TV</button>
@@ -181,7 +181,7 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
 </nav>
 <div class="screen active" id="screen-login">
   <div class="lw"><div class="lc">
-    <div class="ll">Call <span>Order</span></div>
+    <div class="ll">Pedido<span>Flow</span></div>
     <div class="ls">Sistema interno de acompanhamento de pedidos</div>
     <div class="f"><label class="fl">Usuário</label><input id="lu" type="text" autocomplete="username"/></div>
     <div class="f"><label class="fl">Senha</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -203,7 +203,7 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
 <div class="screen" id="screen-tv">
   <div class="tv-wrap">
     <div class="tv-head">
-      <span class="tv-logo">Call Order</span>
+      <span class="tv-logo">PedidoFlow</span>
       <span style="color:var(--muted);font-size:13px">Acompanhamento em tempo real</span>
       <div class="tv-clk" id="tv-clock">--:--:--</div>
     </div>
@@ -452,6 +452,7 @@ async function doLogin(){
     var res=await sb.from('usuarios').select('*').eq('login',l).eq('senha',p).eq('ativo',true).single();
     if(res.error||!res.data){el('lerr').textContent='Usuário ou senha inválidos.';return;}
     ME=res.data;
+    ME.role=ME.role||'operador';
     el('nav-nome').textContent=ME.nome;
     el('nav-role').textContent=ME.role;
     if(ME.setor&&ME.setor!=='todos'){el('nav-setor').textContent=SL[ME.setor]||ME.setor;el('nav-setor').style.display='';}
@@ -514,7 +515,7 @@ async function go(name){
   if(name==='tv'){ov(true);await fetchPedidos();ov(false);renderTV();}
   if(name==='relatorios'){ov(true);await Promise.all([fetchPedidos(),fetchMovs()]);ov(false);renderRelatorios();}
   if(name==='usuarios'){ov(true);var u=await fetchUsuarios();ov(false);renderUsers(u);}
-  if(name==='config'){setTimeout(carregarVozes,100);}
+  if(name==='config'){setTimeout(carregarVozes,100);cfgTab('voz');}
 }
 function startClock(){
   if(_ti)clearInterval(_ti);
@@ -571,7 +572,7 @@ function cfgTab(tab){
 }
 
 async function carregarUsuariosPermissao(){
-  var res = await sb.from('usuarios').select('id,nome,login,role').order('nome');
+  var res = await sb.from('usuarios').select('id,nome,login,role,setor').order('nome');
   _permUsers = (res.data||[]).filter(function(u){return u.role!=='admin';});
   var sel = el('perm-user-sel');
   sel.innerHTML = _permUsers.map(function(u){
@@ -695,19 +696,32 @@ function renderCard(o,setor){
   var tC=totalMs>45*60000?'danger':totalMs>25*60000?'warn':'';
   var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
   var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
-  var idx=SETORES.indexOf(setor),_s=ME?ME.setor:'';
-  // Permissões granulares
-  var canEnvAt  = canDo('at_enviar')  && setor==='atendimento';
-  var canEnvCo  = canDo('co_enviar')  && setor==='corte';
-  var canEnvSe  = canDo('se_enviar')  && setor==='separacao';
-  var canFat    = canDo('fa_faturar') && setor==='faturamento';
-  var canRet    = canDo('se_retirada')&& setor==='retirada';
+  var idx=SETORES.indexOf(setor);
+  var canEnvAt  = canDo('at_enviar')   && setor==='atendimento';
+  var canEnvCo  = canDo('co_enviar')   && setor==='corte';
+  var canEnvSe  = canDo('se_enviar')   && setor==='separacao';
+  var canFat    = canDo('fa_faturar')  && setor==='faturamento';
+  var canRetB   = canDo('se_retirada') && setor==='retirada';
   var canEnviar = canEnvAt||canEnvCo||canEnvSe;
   var actions='';
-  if(setor==='faturamento'&&canFat)actions='<button class="bfin" onclick="openNota(\''+o.id+'\')">Faturar →</button>';
-  else if(setor==='retirada'&&canRet)actions='<button class="bfin" onclick="finalizarPedido(\''+o.id+'\')">Retirado ✓</button>';
-  else if(idx>=0&&idx<SETORES.length-1&&canEnviar)actions='<button class="bmv" onclick="enviar(\''+o.id+'\',\''+SETORES[idx+1]+'\')">→ '+SL[SETORES[idx+1]]+'</button>';
-  return '<div class="card '+pC+'"><div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+(o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+'<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>'+(o.num_nota?'<div class="card-nota">NF: '+o.num_nota+'</div>':'')+'<div class="ct"><div class="ti"><span class="tl">Neste setor</span><span class="tv '+tC+'">'+fmtT(setorMs)+'</span></div><div class="ti"><span class="tl">Total</span><span class="tv '+tC+'">'+fmtT(totalMs)+'</span></div></div>'+(actions||btnRet?'<div class="ca">'+actions+btnRet+'</div>':'')+'</div>';
+  if(setor==='faturamento'&&canFat) actions='<button class="bfin" onclick="openNota(''+o.id+'')">Faturar →</button>';
+  else if(setor==='retirada'&&canRetB) actions='<button class="bfin" onclick="finalizarPedido(''+o.id+'')">Retirado ✓</button>';
+  else if(idx>=0&&idx<SETORES.length-1&&canEnviar) actions='<button class="bmv" onclick="enviar(''+o.id+'',''+SETORES[idx+1]+'')">→ '+SL[SETORES[idx+1]]+'</button>';
+  var canVolta=(ME&&ME.role==='admin')||canEnviar;
+  var btnRet=(canVolta&&idx>0&&o.status==='em_andamento')?'<button class="bret" onclick="retornarPedido(''+o.id+'')">↩ Retornar</button>':'';
+  var allActions=actions+btnRet;
+  return '<div class="card '+pC+'">'+
+    '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+
+    (o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+
+    '<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>'+
+    (o.num_nota?'<div class="card-nota">NF: '+o.num_nota+'</div>':'')+
+    '<div class="ct">'+
+      '<div class="ti"><span class="tl">Neste setor</span><span class="tv '+tC+'">'+fmtT(setorMs)+'</span></div>'+
+      '<div class="ti"><span class="tl">Total</span><span class="tv '+tC+'">'+fmtT(totalMs)+'</span></div>'+
+    '</div>'+
+    (allActions?'<div class="ca">'+allActions+'</div>':'')+
+  '</div>';
+}
 }
 async function retornarPedido(id){
   if(!confirm('Retornar este pedido ao setor anterior?')) return;
