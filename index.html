@@ -395,6 +395,47 @@ function escapeCsv(v){
   v=String(v).replace(/"/g,'""');
   return /[;"\n]/.test(v)?'"'+v+'"':v;
 }
+
+function meuSetor(){return ME&&ME.setor?ME.setor:'';}
+function isAdmin(){return !!(ME&&ME.role==='admin');}
+function isSetorGlobal(){return meuSetor()==='todos';}
+function podeAtuarNoSetor(setor){
+  var s=meuSetor();
+  return !!ME && (
+    isAdmin() ||
+    s==='todos' ||
+    s===setor ||
+    (s==='separacao' && setor==='retirada') ||
+    (s==='atendimento' && setor==='faturamento')
+  );
+}
+function podeConfirmarDestino(destino){return podeAtuarNoSetor(destino);}
+function podeRetornarOrigem(origem){
+  var s=meuSetor();
+  return !!ME && (isAdmin() || s==='todos' || s===origem);
+}
+function podeCriarPedido(){
+  var s=meuSetor();
+  return !!ME && (isAdmin() || s==='atendimento');
+}
+function podeFaturar(){
+  var s=meuSetor();
+  return !!ME && (isAdmin() || s==='todos' || s==='faturamento' || s==='atendimento');
+}
+function podeFinalizarRetirada(){
+  var s=meuSetor();
+  return !!ME && (isAdmin() || s==='todos' || s==='separacao');
+}
+function temSetorRestrito(){return !!ME && meuSetor() && meuSetor()!=='todos';}
+function telaAtiva(){
+  var ativa=document.querySelector('.screen.active');
+  return ativa ? ativa.id : '';
+}
+function atualizarTelasAtivas(){
+  var ativa=telaAtiva();
+  if(ativa==='screen-painel')renderPainel();
+  if(ativa==='screen-tv')renderTV();
+}
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var e=document.createElement('div');e.className='toast t-'+type;e.textContent=msg;el('tw').appendChild(e);requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show');});});setTimeout(function(){e.classList.remove('show');setTimeout(function(){e.remove();},300);},dur);}
 function ov(show){el('ov').classList.toggle('h',!show);}
 function openM(id){el(id).classList.add('open');}
@@ -469,10 +510,10 @@ async function doLogin(){
     ME=res.data;
     el('nav-nome').textContent=ME.nome;
     el('nav-role').textContent=ME.role;
-    if(ME.setor&&ME.setor!=='todos'){el('nav-setor').textContent=SL[ME.setor]||ME.setor;el('nav-setor').style.display='';}
+    if(temSetorRestrito()){el('nav-setor').textContent=SL[meuSetor()]||meuSetor();el('nav-setor').style.display='';}
     el('main-nav').style.display='flex';
-    if(ME.role==='admin')document.querySelectorAll('.adm-only').forEach(function(e){e.style.display='';});
-    var podeNovo=ME.role==='admin'||ME.setor==='atendimento';
+    if(isAdmin())document.querySelectorAll('.adm-only').forEach(function(e){e.style.display='';});
+    var podeNovo=podeCriarPedido();
     el('btn-novo').style.display=podeNovo?'flex':'none';
     allHide();go('painel');startRealtime();startClock();
   }catch(e){el('lerr').textContent=e.message;}
@@ -498,15 +539,11 @@ function startRealtime(){
       if(idx>=0)PEDIDOS[idx]=payload.new;else PEDIDOS.push(payload.new);
       if(payload.new.status==='aguardando'&&(!old||old.status!=='aguardando')){
         var dest=payload.new.setor_pendente;
-        var _ms=ME?ME.setor:'';
-        var ehMeu=ME&&(ME.role==='admin'||_ms==='todos'||_ms===dest||(_ms==='separacao'&&dest==='retirada')||(_ms==='atendimento'&&dest==='faturamento'));
-        if(ehMeu)toast('Pedido #'+payload.new.numero+' aguardando confirmação em '+(SL[dest]||dest)+'!','warn',6000);
+        if(podeConfirmarDestino(dest))toast('Pedido #'+payload.new.numero+' aguardando confirmação em '+(SL[dest]||dest)+'!','warn',6000);
       }
     }
     else if(payload.eventType==='DELETE'){PEDIDOS=PEDIDOS.filter(function(p){return p.id!==payload.old.id;});}
-    var a=document.querySelector('.screen.active');
-    if(a&&a.id==='screen-painel')renderPainel();
-    if(a&&a.id==='screen-tv')renderTV();
+    atualizarTelasAtivas();
   }).subscribe();
 }
 async function fetchPedidos(){
@@ -597,9 +634,7 @@ function startClock(){
   if(_ti)clearInterval(_ti);
   _ti=setInterval(function(){
     el('tv-clock').textContent=fmtClock(new Date());
-    var a=document.querySelector('.screen.active');
-    if(a&&a.id==='screen-painel')renderPainel();
-    if(a&&a.id==='screen-tv')renderTV();
+    atualizarTelasAtivas();
     PEDIDOS.forEach(function(o){
       if(o.status!=='aguardando'||!o.pendente_desde)return;
       var ms=now()-tsMs(o.pendente_desde);
@@ -610,7 +645,7 @@ function startClock(){
 }
 function renderPainel(){
   el('panel-date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
-  if(ME&&ME.setor&&ME.setor!=='todos'){el('setor-badge').textContent='Seu setor: '+SL[ME.setor];el('setor-badge').style.display='';}
+  if(temSetorRestrito()){el('setor-badge').textContent='Seu setor: '+SL[meuSetor()];el('setor-badge').style.display='';}
   var allCols=SETORES.concat(['retirada']);
   el('kanban').innerHTML=allCols.map(function(setor){
     var items=PEDIDOS.filter(function(o){return o.setor===setor&&o.status!=='finalizado'&&o.status!=='aguardando';});
@@ -620,9 +655,9 @@ function renderPainel(){
 }
 function renderTransCard(o){
   var elapsed=now()-tsMs(o.pendente_desde),alerta=elapsed>ALERT_MS;
-  var dest=o.setor_pendente||'',origem=o.setor||'',_ms=ME?ME.setor:'';
-  var canC=ME&&(ME.role==='admin'||_ms==='todos'||_ms===dest||(_ms==='separacao'&&dest==='retirada')||(_ms==='atendimento'&&dest==='faturamento'));
-  var canR=ME&&(ME.role==='admin'||_ms==='todos'||_ms===origem);
+  var dest=o.setor_pendente||'',origem=o.setor||'';
+  var canC=podeConfirmarDestino(dest);
+  var canR=podeRetornarOrigem(origem);
   var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';  
   var sC=alerta?'cd':elapsed>3*60000?'cw':'';
   var acoes='';
@@ -641,10 +676,10 @@ function renderCard(o,setor){
   var tC=totalMs>45*60000?'danger':totalMs>25*60000?'warn':'';
   var prio=o.prioridade||'normal',pC=prio==='idoso'?'prio-idoso':prio==='gestante'?'prio-gestante':'';
   var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
-  var idx=SETORES.indexOf(setor),_s=ME?ME.setor:'';
-  var canAct=ME&&(ME.role==='admin'||_s==='todos'||_s===setor||(_s==='separacao'&&setor==='retirada')||(_s==='atendimento'&&setor==='faturamento'));
-  var canFat=ME&&(ME.role==='admin'||_s==='todos'||_s==='faturamento'||_s==='atendimento');
-  var canRet=ME&&(ME.role==='admin'||_s==='todos'||_s==='separacao');
+  var idx=SETORES.indexOf(setor);
+  var canAct=podeAtuarNoSetor(setor);
+  var canFat=podeFaturar();
+  var canRet=podeFinalizarRetirada();
 
   var actions='';
 
@@ -680,8 +715,7 @@ async function retornarPedido(id){
       return;
     }
 
-    var _ms=ME?ME.setor:'';
-    var podeRetornar=ME&&(ME.role==='admin'||_ms==='todos'||_ms===o.setor);
+    var podeRetornar=podeRetornarOrigem(o.setor);
 
     if(!podeRetornar){
       toast('Somente o setor anterior pode retornar este pedido.','err');
