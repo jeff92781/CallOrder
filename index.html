@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -223,16 +224,27 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
 </div>
 <div class="screen" id="screen-relatorios">
   <main>
-    <div class="rt">Relatórios do Dia</div>
+    <div class="uh" style="margin-bottom:12px">
+      <span class="utit">Relatórios</span>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="f" style="margin-bottom:0">
+          <label class="fl">Data</label>
+          <input type="date" id="rel-date"/>
+        </div>
+        <button class="bok" onclick="aplicarFiltroRelatorios()">Filtrar</button>
+        <button class="bcan" onclick="irHojeRelatorios()">Hoje</button>
+      </div>
+    </div>
+    <div id="rel-sub" style="color:var(--muted);font-size:12px;margin-bottom:18px"></div>
     <div class="kg" id="kpi-grid"></div>
     <div class="st">Tempo médio por setor</div>
     <div id="bars-setor" style="margin-bottom:28px"></div>
     <div class="st adm-only" style="display:none">Tempo de confirmação por setor</div>
     <div id="bars-conf" class="adm-only" style="margin-bottom:28px;display:none"></div>
-    <div class="st">Ranking — pedidos mais demorados</div>
+    <div class="st">Registro dos pedidos do dia</div>
     <table class="rkt">
-      <thead><tr><th>#</th><th>Pedido</th><th>Cliente</th><th>Setor</th><th>Tempo Total</th><th>Status</th></tr></thead>
-      <tbody id="rank-body"></tbody>
+      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>Setor atual</th><th>Status</th><th>NF</th><th>Tempo total</th></tr></thead>
+      <tbody id="pedidos-dia-body"></tbody>
     </table>
   </main>
 </div>
@@ -292,14 +304,7 @@ main{padding:20px;max-width:1500px;margin:0 auto;width:100%}
   </main>
 </div>
 
-<div id="screen-tv-pub" style="display:none;background:#07070a;min-height:100vh;padding:24px;font-family:var(--font-mono);position:relative">
-  <div id="tv-audio-unlock" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(7,7,10,.86);z-index:99999">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 28px;background:#18181c;border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,.35)">
-      <div style="font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--atend)">Ativar áudio da TV</div>
-      <div style="font-size:13px;color:var(--muted);text-align:center;max-width:360px">Clique uma vez para liberar as chamadas por voz nesta tela.</div>
-      <button id="tv-audio-btn" style="padding:18px 28px;border:none;border-radius:12px;font-family:var(--font-mono);font-size:18px;font-weight:600;background:#5DCAA5;color:#04342C;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.35);">🔊 Ativar áudio da TV</button>
-    </div>
-  </div>
+<div id="screen-tv-pub" style="display:none;background:#07070a;min-height:100vh;padding:24px;font-family:var(--font-mono)">
   <div style="display:flex;align-items:center;margin-bottom:24px;gap:16px">
     <span style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--atend)">Call Order</span>
     <span style="color:var(--muted);font-size:13px">Acompanhamento em tempo real</span>
@@ -363,7 +368,7 @@ const SC = {atendimento:'tag-at',corte:'tag-co',separacao:'tag-se',faturamento:'
 const SD = {atendimento:'#5DCAA5',corte:'#85B7EB',separacao:'#FAC775',faturamento:'#ED93B1',retirada:'rgba(240,239,232,.3)'};
 const BC = {atendimento:'#5DCAA5',corte:'#85B7EB',separacao:'#FAC775',faturamento:'#ED93B1'};
 const ALERT_MS = 5*60*1000;
-let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null;
+let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null, REPORT_DATE='';
 let _tvPub=[], _tvAudioReady=false, _tvLastSnapshot='';
 let _tvSpeakQueue=[], _tvSpeaking=false;
 const el = id => document.getElementById(id);
@@ -372,6 +377,17 @@ const tsMs = ts => ts ? new Date(ts).getTime() : 0;
 function fmtT(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);if(h>0)return h+'h '+( m%60)+'m';if(m>0)return m+'m '+(s%60)+'s';return s+'s';}
 function fmtTs(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);if(h>0)return String(h).padStart(2,'0')+':'+String(m%60).padStart(2,'0')+'h';return String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function fmtClock(d){return d.toLocaleTimeString('pt-BR');}
+function fmtDateInput(d){var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+function getDayRange(dateStr){
+  var base=dateStr?new Date(dateStr+'T00:00:00'):new Date();
+  base.setHours(0,0,0,0);
+  var next=new Date(base);next.setDate(next.getDate()+1);
+  return {start:base.toISOString(),end:next.toISOString(),label:base.toLocaleDateString('pt-BR')};
+}
+function fmtDateTime(ts){
+  if(!ts)return '—';
+  return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
 function toast(msg,type,dur){type=type||'ok';dur=dur||3500;var e=document.createElement('div');e.className='toast t-'+type;e.textContent=msg;el('tw').appendChild(e);requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show');});});setTimeout(function(){e.classList.remove('show');setTimeout(function(){e.remove();},300);},dur);}
 function ov(show){el('ov').classList.toggle('h',!show);}
 function openM(id){el(id).classList.add('open');}
@@ -496,6 +512,16 @@ async function fetchMovs(){
   var res=await sb.from('movimentacoes').select('*').gte('saida_at',hoje.toISOString());
   MOVS=res.data||[];
 }
+async function fetchPedidosRelatorio(dateStr){
+  var r=getDayRange(dateStr);
+  var res=await sb.from('pedidos').select('*').gte('entrada_at',r.start).lt('entrada_at',r.end).order('entrada_at',{ascending:false});
+  PEDIDOS=res.data||[];
+}
+async function fetchMovsRelatorio(dateStr){
+  var r=getDayRange(dateStr);
+  var res=await sb.from('movimentacoes').select('*').gte('saida_at',r.start).lt('saida_at',r.end).order('saida_at',{ascending:false});
+  MOVS=res.data||[];
+}
 async function fetchUsuarios(){var res=await sb.from('usuarios').select('id,nome,login,role,setor,ativo').order('nome');return res.data||[];}
 function allHide(){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});}
 async function go(name){
@@ -504,7 +530,11 @@ async function go(name){
   document.querySelectorAll('.tab').forEach(function(t){if((t.getAttribute('onclick')||'').indexOf("'"+name+"'")>=0)t.classList.add('active');});
   if(name==='painel'){ov(true);await fetchPedidos();ov(false);renderPainel();}
   if(name==='tv'){ov(true);await fetchPedidos();ov(false);renderTV();}
-  if(name==='relatorios'){ov(true);await Promise.all([fetchPedidos(),fetchMovs()]);ov(false);renderRelatorios();}
+  if(name==='relatorios'){
+    if(!REPORT_DATE)REPORT_DATE=fmtDateInput(new Date());
+    if(el('rel-date'))el('rel-date').value=REPORT_DATE;
+    ov(true);await Promise.all([fetchPedidosRelatorio(REPORT_DATE),fetchMovsRelatorio(REPORT_DATE)]);ov(false);renderRelatorios();
+  }
   if(name==='usuarios'){ov(true);var u=await fetchUsuarios();ov(false);renderUsers(u);}
   if(name==='config'){setTimeout(carregarVozes,100);}
 }
@@ -707,25 +737,73 @@ function renderTV(){
   el('tv-active').textContent=active.length;
   el('tv-clock').textContent=fmtClock(new Date());
 }
+async function aplicarFiltroRelatorios(){
+  REPORT_DATE=el('rel-date')&&el('rel-date').value?el('rel-date').value:fmtDateInput(new Date());
+  ov(true);
+  try{
+    await Promise.all([fetchPedidosRelatorio(REPORT_DATE),fetchMovsRelatorio(REPORT_DATE)]);
+    renderRelatorios();
+  }catch(e){toast(e.message,'err');}
+  finally{ov(false);}
+}
+function irHojeRelatorios(){
+  REPORT_DATE=fmtDateInput(new Date());
+  if(el('rel-date'))el('rel-date').value=REPORT_DATE;
+  aplicarFiltroRelatorios();
+}
 function renderRelatorios(){
-  var all=PEDIDOS,done=all.filter(function(o){return o.status==='finalizado';}),active=all.filter(function(o){return o.status!=='finalizado';});
+  var refDate=REPORT_DATE||fmtDateInput(new Date());
+  var refRange=getDayRange(refDate);
+  var all=PEDIDOS.slice(),done=all.filter(function(o){return o.status==='finalizado';}),active=all.filter(function(o){return o.status!=='finalizado';});
   var times=done.map(function(o){return tsMs(o.finalizado_at)-tsMs(o.entrada_at);}).filter(function(t){return t>0;});
   var avg=times.length?times.reduce(function(a,b){return a+b;},0)/times.length:0;
   var minT=times.length?Math.min.apply(null,times):0,maxT=times.length?Math.max.apply(null,times):0;
-  el('kpi-grid').innerHTML=[{l:'Total de pedidos',v:all.length,s:'hoje'},{l:'Finalizados',v:done.length,s:'hoje'},{l:'Em andamento',v:active.filter(function(o){return o.status==='em_andamento';}).length,s:'agora'},{l:'Aguard. confirmação',v:active.filter(function(o){return o.status==='aguardando';}).length,s:'agora'},{l:'Tempo médio',v:avg?fmtT(avg):'--',s:'por pedido'},{l:'Mais rápido',v:minT?fmtT(minT):'--',s:''},{l:'Mais lento',v:maxT?fmtT(maxT):'--',s:''}].map(function(k){return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv">'+k.v+'</div><div class="ks">'+k.s+'</div></div>';}).join('');
+  if(el('rel-date') && el('rel-date').value!==refDate)el('rel-date').value=refDate;
+  el('rel-sub').textContent='Exibindo dados de '+refRange.label+' — pedidos registrados nesta data.';
+  el('kpi-grid').innerHTML=[
+    {l:'Total de pedidos',v:all.length,s:refRange.label},
+    {l:'Finalizados',v:done.length,s:refRange.label},
+    {l:'Em andamento',v:active.filter(function(o){return o.status==='em_andamento';}).length,s:'na data'},
+    {l:'Aguard. confirmação',v:active.filter(function(o){return o.status==='aguardando';}).length,s:'na data'},
+    {l:'Tempo médio',v:avg?fmtT(avg):'--',s:'por pedido'},
+    {l:'Mais rápido',v:minT?fmtT(minT):'--',s:''},
+    {l:'Mais lento',v:maxT?fmtT(maxT):'--',s:''}
+  ].map(function(k){return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv">'+k.v+'</div><div class="ks">'+k.s+'</div></div>';}).join('');
+
   var sA={},sC={};
-  MOVS.forEach(function(m){var ms=parseInt(m.tempo_ms)||0;if(ms<=0||SETORES.indexOf(m.setor_origem)<0)return;sA[m.setor_origem]=(sA[m.setor_origem]||0)+ms;sC[m.setor_origem]=(sC[m.setor_origem]||0)+1;});
+  MOVS.forEach(function(m){
+    var ms=parseInt(m.tempo_ms)||0;
+    if(ms<=0||SETORES.indexOf(m.setor_origem)<0)return;
+    sA[m.setor_origem]=(sA[m.setor_origem]||0)+ms;
+    sC[m.setor_origem]=(sC[m.setor_origem]||0)+1;
+  });
   var maxS=Math.max.apply(null,SETORES.map(function(s){return sC[s]?(sA[s]/sC[s]):0;}))||1;
-  el('bars-setor').innerHTML=SETORES.map(function(s){var a=sC[s]?Math.round(sA[s]/sC[s]):0;return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+( sC[s]||0)+')</span></span></div>';}).join('');
+  el('bars-setor').innerHTML=SETORES.map(function(s){
+    var a=sC[s]?Math.round(sA[s]/sC[s]):0;
+    return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(sC[s]||0)+')</span></span></div>';
+  }).join('');
+
   if(ME&&ME.role==='admin'){
     var cA={},cC={};
-    MOVS.forEach(function(m){var ms=parseInt(m.tempo_confirmacao_ms)||0;if(ms<=0||SETORES.indexOf(m.setor_destino)<0)return;cA[m.setor_destino]=(cA[m.setor_destino]||0)+ms;cC[m.setor_destino]=(cC[m.setor_destino]||0)+1;});
+    MOVS.forEach(function(m){
+      var ms=parseInt(m.tempo_confirmacao_ms)||0;
+      if(ms<=0||SETORES.indexOf(m.setor_destino)<0)return;
+      cA[m.setor_destino]=(cA[m.setor_destino]||0)+ms;
+      cC[m.setor_destino]=(cC[m.setor_destino]||0)+1;
+    });
     var maxC=Math.max.apply(null,SETORES.map(function(s){return cC[s]?(cA[s]/cC[s]):0;}))||1;
-    el('bars-conf').innerHTML=SETORES.map(function(s){var a=cC[s]?Math.round(cA[s]/cC[s]):0;return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxC*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+( cC[s]||0)+')</span></span></div>';}).join('');
+    el('bars-conf').innerHTML=SETORES.map(function(s){
+      var a=cC[s]?Math.round(cA[s]/cC[s]):0;
+      return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxC*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(cC[s]||0)+')</span></span></div>';
+    }).join('');
   }
-  var ranked=all.slice().sort(function(a,b){var ta=(tsMs(a.finalizado_at)||now())-tsMs(a.entrada_at),tb=(tsMs(b.finalizado_at)||now())-tsMs(b.entrada_at);return tb-ta;}).slice(0,10);
+
   var sc={finalizado:'var(--atend)',faturado:'var(--fat)',em_andamento:'var(--muted)',aguardando:'var(--corte)'};
-  el('rank-body').innerHTML=ranked.map(function(o,i){var t=(tsMs(o.finalizado_at)||now())-tsMs(o.entrada_at);return '<tr><td style="color:var(--muted)">'+(i+1)+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td><span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span></td><td>'+fmtT(t)+'</td><td style="color:'+(sc[o.status]||'var(--muted)')+';font-size:12px">'+o.status+'</td></tr>';}).join('');
+  el('pedidos-dia-body').innerHTML=all.length?all.map(function(o){
+    var t=(tsMs(o.finalizado_at)||now())-tsMs(o.entrada_at);
+    return '<tr><td>'+fmtDateTime(o.entrada_at)+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td><span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span>'+(o.status==='aguardando'&&o.setor_pendente?' <span style="font-size:11px;color:var(--corte)">→ '+(SL[o.setor_pendente]||o.setor_pendente)+'</span>':'')+'</td><td style="color:'+(sc[o.status]||'var(--muted)')+';font-size:12px">'+(o.status==='aguardando'?'Aguard. confirmação':o.status==='em_andamento'?'Em andamento':o.status==='faturado'?'Pronto p/ retirada':'Finalizado')+'</td><td>'+(o.num_nota||'—')+'</td><td>'+fmtT(t)+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" style="color:var(--muted)">Nenhum pedido registrado nesta data.</td></tr>';
+
 }
 var SETORlabel={todos:'Todos',atendimento:'Atendimento',corte:'Corte',separacao:'Separação',faturamento:'Faturamento'};
 function renderUsers(users){el('users-body').innerHTML=users.map(function(u){return '<tr><td>'+u.nome+'</td><td style="color:var(--muted)">'+u.login+'</td><td style="font-size:12px">'+(SETORlabel[u.setor]||u.setor)+'</td><td><span class="bar '+(u.role==='admin'?'bar-a':'bar-o')+'">'+u.role+'</span></td><td><span class="'+(u.ativo?'bon':'boff')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td><td><button class="bmv" onclick="toggleUser(\''+u.id+'\','+u.ativo+',\''+u.login+'\')">'+(u.ativo?'Desativar':'Ativar')+'</button></td></tr>';}).join('');}
@@ -750,32 +828,30 @@ function unlockTVAudio() {
   _tvAudioReady = true;
 
   try {
+    var u = new SpeechSynthesisUtterance('Áudio ativado');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
     window.speechSynthesis.cancel();
-    window.speechSynthesis.resume();
-    var prime = new SpeechSynthesisUtterance(' ');
-    prime.volume = 0;
-    prime.rate = 1;
-    prime.pitch = 1;
-    prime.lang = 'pt-BR';
-    window.speechSynthesis.speak(prime);
   } catch(e) {}
 
-  var wrap = document.getElementById('tv-audio-unlock');
-  if (wrap) wrap.style.display = 'none';
+  var btn = document.getElementById('tv-audio-unlock');
+  if (btn) btn.remove();
 
-  toast('Áudio da TV ativado.','ok',2500);
   processarFilaTV();
 }
 
 function renderTVAudioUnlock() {
-  var wrap = document.getElementById('tv-audio-unlock');
-  var btn = document.getElementById('tv-audio-btn');
-  if (!wrap || !btn) return;
-  wrap.style.display = _tvAudioReady ? 'none' : 'flex';
-  if (!btn.dataset.bound) {
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', unlockTVAudio);
-  }
+  if (!el('screen-tv-pub')) return;
+  if (document.getElementById('tv-audio-unlock')) return;
+
+  var wrap = document.createElement('div');
+  wrap.id = 'tv-audio-unlock';
+  wrap.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,7,10,.82);z-index:99999;';
+
+  wrap.innerHTML = '<button id="tv-audio-btn" style="padding:18px 28px;border:none;border-radius:12px;font-family:var(--font-mono);font-size:18px;font-weight:600;background:#5DCAA5;color:#04342C;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.35);">🔊 Ativar áudio da TV</button>';
+
+  document.body.appendChild(wrap);
+  document.getElementById('tv-audio-btn').addEventListener('click', unlockTVAudio);
 }
 
 function criarUtterance(texto) {
@@ -798,33 +874,18 @@ function processarFilaTV() {
   _tvSpeaking = true;
   var texto = _tvSpeakQueue.shift();
   var u = criarUtterance(texto);
-  var fallbackMs = Math.max(3500, Math.min(12000, texto.length * 95));
-  var finalizado = false;
-  var fallback = setTimeout(function(){
-    if (finalizado) return;
-    finalizado = true;
-    try { window.speechSynthesis.cancel(); } catch(e) {}
+
+  u.onend = function(){
     _tvSpeaking = false;
-    setTimeout(processarFilaTV, 200);
-  }, fallbackMs);
+    setTimeout(processarFilaTV, 250);
+  };
 
-  function liberarFila(){
-    if (finalizado) return;
-    finalizado = true;
-    clearTimeout(fallback);
+  u.onerror = function(){
     _tvSpeaking = false;
-    setTimeout(processarFilaTV, 200);
-  }
+    setTimeout(processarFilaTV, 250);
+  };
 
-  u.onend = liberarFila;
-  u.onerror = liberarFila;
-
-  try {
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(u);
-  } catch(e) {
-    liberarFila();
-  }
+  window.speechSynthesis.speak(u);
 }
 
 function enfileirarChamadaTV(texto) {
@@ -833,22 +894,18 @@ function enfileirarChamadaTV(texto) {
 }
 
 function anunciarTVPublica(listaAtual) {
-  var novos = listaAtual.filter(function(o) {
-    return o.setor === 'retirada' && o.status === 'faturado';
-  }).sort(function(a,b){
-    return tsMs(a.setor_entrada_at) - tsMs(b.setor_entrada_at);
-  });
+  if (!_tvAudioReady || !window.speechSynthesis) return;
 
-  novos.forEach(function(o) {
-    var memoria = 'tv_call_confirmed_' + o.id + '_' + (o.setor_entrada_at || '');
+  listaAtual.forEach(function(o) {
+    var prontoRetirada = (o.setor === 'retirada' && o.status === 'faturado');
+    if (!prontoRetirada) return;
+
+    var chave = [o.id,o.status||'',o.setor||'',o.setor_pendente||''].join('|');
+    var memoria = 'tv_call_' + chave;
     if (sessionStorage.getItem(memoria)) return;
     sessionStorage.setItem(memoria, '1');
 
-    toast('Chamada liberada: pedido #' + o.numero + ' para retirada.','move',5000);
-
-    if (_tvAudioReady && window.speechSynthesis) {
-      enfileirarChamadaTV('Pedido ' + o.numero + ', por favor dirija-se ao balcão para retirar sua mercadoria.');
-    }
+    enfileirarChamadaTV('Pedido ' + o.numero + ', por favor dirija-se ao balcão para retirar sua mercadoria.');
   });
 }
 
@@ -862,15 +919,12 @@ async function iniciarTVPublica(){
 
   async function carregarTVPublica(){
     try{
-      var hoje=new Date();
-      hoje.setHours(0,0,0,0);
+      var hoje=new Date();hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.faturado').order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       renderTVPub();
       anunciarTVPublica(_tvPub);
-    }catch(e){
-      console.error('Falha ao carregar TV pública', e);
-    }
+    }catch(e){}
   }
 
   await carregarTVPublica();
@@ -880,18 +934,11 @@ function renderTVPub(){
   var active=_tvPub.filter(function(o){return o.status!=='finalizado';});
   if(!el('tvp-body'))return;
   el('tvp-body').innerHTML=active.sort(function(a,b){return tsMs(b.entrada_at)-tsMs(a.entrada_at);}).map(function(o){
-    var totalBase = tsMs(o.entrada_at) || now();
-    var isWaiting = o.status==='aguardando' && !!o.setor_pendente;
-    var setorBase = isWaiting ? (tsMs(o.pendente_desde) || tsMs(o.setor_entrada_at) || totalBase) : (tsMs(o.setor_entrada_at) || totalBase);
-    var totalMs=now()-totalBase;
-    var setorMs=now()-setorBase;
+    var totalMs=now()-tsMs(o.entrada_at),setorMs=o.status==='aguardando'?now()-tsMs(o.pendente_desde):now()-tsMs(o.setor_entrada_at);
     var rC=totalMs>45*60000?'tv-row-danger':totalMs>25*60000?'tv-row-warn':'';
     var tColor=totalMs>45*60000?'var(--danger)':totalMs>25*60000?'var(--warn)':'var(--text)';
-    var sl=isWaiting
-      ? '<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span> <span style="font-size:11px;color:var(--corte)">→ '+(SL[o.setor_pendente]||o.setor_pendente||'')+'</span>'
-      : '<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span>';
-    var statusLabel = o.status==='faturado' ? '✓ Faturado' : isWaiting ? 'Aguard. confirmação' : 'Em andamento';
-    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim">'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'">'+fmtTs(totalMs)+'</span></td><td><span style="font-size:12px;color:var(--muted)">'+statusLabel+'</span></td></tr>';
+    var sl='<span class="tv-set '+(SC[o.setor]||'tag-do')+'">'+(SL[o.setor]||o.setor)+'</span>';
+    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim">'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'">'+fmtTs(totalMs)+'</span></td><td><span style="font-size:12px;color:var(--muted)">'+(o.status==='faturado'?'✓ Faturado':o.status==='aguardando'?'Aguard. confirmação':'Em andamento')+'</span></td></tr>';
   }).join('');
   var done=_tvPub.filter(function(o){return o.status==='finalizado';});
   var avgMs=done.length?done.reduce(function(s,o){return s+(tsMs(o.finalizado_at)-tsMs(o.entrada_at));},0)/done.length:0;
