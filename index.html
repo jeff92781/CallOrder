@@ -132,11 +132,13 @@ main{padding:24px;max-width:1500px;margin:0 auto;width:100%;position:relative;z-
 .tl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
 .tv{font-weight:700;font-size:15px}
 .tv.warn{color:var(--warn)}.tv.danger{color:var(--danger)}
-.ca{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:center}
+.ca{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.ca>*:last-child:nth-child(odd){grid-column:1/-1}
+.ca>button,.ca>span{width:100%;box-sizing:border-box;justify-content:center}
 .bmv{padding:8px 18px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
 .bmv:hover{background:#2563eb;transform:translateY(-1px)}
-.bret{padding:8px 18px;background:#ef4444;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
-.bret:hover{background:#dc2626;transform:translateY(-1px)}
+.bret{padding:8px 18px;background:#f97316;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
+.bret:hover{background:#ea6c08;transform:translateY(-1px)}
 .bfin{padding:8px 18px;background:#22d3a7;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
 .bfin:hover{background:#10b981;transform:translateY(-1px)}
 .bcon{padding:8px 20px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
@@ -535,8 +537,8 @@ function applyTheme(t){
 }
 function toggleTheme(){var c=getStoredTheme();applyTheme(c==='dark'?'light':'dark');}
 applyTheme(getStoredTheme());
-const SUPA_URL = 'https://egshgwnnaxfvtxwvgnnh.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnc2hnd25uYXhmdnR4d3Znbm5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQ2MjIsImV4cCI6MjA5MDgzMDYyMn0.udgUHpDU4wldbwsnl46AuzyljIRxNPtY00n6YrOtje4';
+const SUPA_URL = 'https://lpjyrmkgjgehfaosagxl.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwanlybWtnamdlaGZhb3NhZ3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgwOTIsImV4cCI6MjA5MTA4NDA5Mn0.c0EweQ387mQI5Fh1auNaCwTNTBLZulRFdg0cjUSvnSU';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const SETORES = ['atendimento','estoque','corte','separacao','faturamento'];
 const PROXIMO_SETOR = {atendimento:'estoque',estoque:'corte',corte:'separacao',separacao:'faturamento'};
@@ -1347,17 +1349,17 @@ function renderCard(o,setor){
   if(o.status==='pronto_balcao' && setor==='separacao'){
     if(canAct){
     acoes.push('<button class="bcall" onclick="chamarBalcao(\''+o.id+'\')">Chamar balcão</button>');
-    acoes.push('<button class="bmv" style="border-color:rgba(239,159,39,.5);color:var(--warn)" onclick="enviarAgRetira(\''+o.id+'\')">Ag. Retira</button>');
+    acoes.push('<button class="bmv" style="background:#f59e0b" onclick="enviarAgRetira(\''+o.id+'\')">Ag. Retira</button>');
     }
   }else if(setor==='faturamento' && podeFaturar()){
     acoes.push('<button class="bfin" onclick="openNota(\''+o.id+'\')">Faturar</button>');
   }else if(setor==='estoque' && canAct){
     acoes.push('<button class="bmv" onclick="enviar(\''+o.id+'\',\'corte\')">→ Corte</button>');
-    acoes.push('<button class="bcon" onclick="enviar(\''+o.id+'\',\'separacao\')">↠ Separação</button>');
+    acoes.push('<button class="bcon" style="background:#6366f1" onclick="enviar(\''+o.id+'\',\'separacao\')">→ Separação</button>');
   }else if(setor==='atendimento' && canAct){
-    acoes.push('<button class="bmv" onclick="enviar(\''+o.id+'\',\'estoque\')">→ Estoque</button>');
+    acoes.push('<button class="bmv" style="background:#c49a6c" onclick="enviar(\''+o.id+'\',\'estoque\')">→ Estoque</button>');
   }else if(setor==='corte' && canAct){
-    acoes.push('<button class="bmv" onclick="enviar(\''+o.id+'\',\'separacao\')">→ Separação</button>');
+    acoes.push('<button class="bmv" style="background:#6366f1" onclick="enviar(\''+o.id+'\',\'separacao\')">→ Separação</button>');
   }else if(setor==='separacao' && canAct){
     acoes.push('<button class="bmv" onclick="enviar(\''+o.id+'\',\'faturamento\')">→ Faturamento</button>');
   }
