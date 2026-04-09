@@ -1591,7 +1591,7 @@ function buildTVRows(pedidos) {
   }).join('');
 
   var hoje=new Date();hoje.setHours(0,0,0,0);var hojeMs=hoje.getTime();
-  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.finalizado_at)>=hojeMs;});
+  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.entrada_at)>=hojeMs;});
   var avgMs=done.length?done.reduce(function(s,o){return s+businessMs(tsMs(o.entrada_at),tsMs(o.finalizado_at));},0)/done.length:0;
 
   return { html: html, avgMs: avgMs, doneCount: done.length, activeCount: active.length };
