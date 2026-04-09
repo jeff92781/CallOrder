@@ -269,6 +269,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
   <div class="nav-right">
     <span id="nav-nome">—</span>
     <span id="nav-user" style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.02em">—</span><span class="badge-r" id="nav-role">—</span>
+    <button id="pause-timer-btn" class="adm-only" onclick="toggleTimers()" style="display:none;padding:5px 14px;background:#f59e0b;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em">⏸ Pausar</button>
     <span class="badge-s" id="nav-setor" style="display:none">—</span>
     <button class="tab" onclick="logout()">Sair</button>
   </div>
@@ -571,7 +572,70 @@ let _tvPub=[], _tvAudioReady=false;
 let _tvSpeakQueue=[], _tvSpeaking=false;
 let _occCtx=null, _audioCtx=null;
 const el = id => document.getElementById(id);
-const now = () => Date.now();
+// ── PAUSEABLE TIMER ──
+var _timerPaused = false;
+var _timerPauseOffset = 0;   // total ms accumulated while paused
+var _timerPausedAt = null;   // timestamp when pause started
+
+function now() {
+  if (_timerPaused && _timerPausedAt !== null) {
+    return _timerPausedAt - _timerPauseOffset;
+  }
+  return Date.now() - _timerPauseOffset;
+}
+
+function pauseTimers() {
+  if (_timerPaused) return;
+  _timerPaused = true;
+  _timerPausedAt = Date.now();
+  updatePauseBtn();
+  toast('Cronômetros pausados', 'warn', 3000);
+}
+
+function resumeTimers() {
+  if (!_timerPaused) return;
+  _timerPauseOffset += Date.now() - _timerPausedAt;
+  _timerPausedAt = null;
+  _timerPaused = false;
+  updatePauseBtn();
+  toast('Cronômetros retomados', 'ok', 3000);
+}
+
+function toggleTimers() {
+  if (!isAdmin()) { toast('Apenas administradores podem pausar os cronômetros.', 'err', 4000); return; }
+  _timerPaused ? resumeTimers() : pauseTimers();
+}
+
+function updatePauseBtn() {
+  var btn = document.getElementById('pause-timer-btn');
+  if (!btn) return;
+  btn.textContent = _timerPaused ? '▶ Retomar' : '⏸ Pausar';
+  btn.style.background = _timerPaused ? '#22d3a7' : '#f59e0b';
+}
+
+// ── AUTO PAUSE: 18:15 pause, 08:30 resume ──
+function checkAutoTimerSchedule() {
+  var d = new Date();
+  var h = d.getHours(), m = d.getMinutes();
+  var mins = h * 60 + m;
+  var pauseMins  = 18 * 60 + 15;  // 18:15
+  var resumeMins =  8 * 60 + 30;  //  8:30
+  // Pause at 18:15 (within a 1-min window)
+  if (mins === pauseMins && !_timerPaused) {
+    _timerPaused = true;
+    _timerPausedAt = Date.now();
+    updatePauseBtn();
+    toast('Cronômetros pausados automaticamente (18:15)', 'warn', 5000);
+  }
+  // Resume at 08:30 (within a 1-min window)
+  if (mins === resumeMins && _timerPaused) {
+    _timerPauseOffset += Date.now() - _timerPausedAt;
+    _timerPausedAt = null;
+    _timerPaused = false;
+    updatePauseBtn();
+    toast('Cronômetros retomados automaticamente (08:30)', 'ok', 5000);
+  }
+}
 const tsMs = ts => ts ? new Date(ts).getTime() : 0;
 
 // ══════════════════════════════════════════════
@@ -1211,6 +1275,8 @@ function startClock(){
 
     // Atualiza apenas os textos de tempo sem rebuild
     updateTimersInPlace();
+    // Auto pause/resume schedule
+    checkAutoTimerSchedule();
 
     // Check Ag. Retira 15-day alerts
     checkAgRetiraAlerts();
