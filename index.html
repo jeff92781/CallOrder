@@ -577,6 +577,39 @@ var _timerPaused = false;
 var _timerPauseOffset = 0;   // total ms accumulated while paused
 var _timerPausedAt = null;   // timestamp when pause started
 
+// ── Sync timer state from localStorage (for TV tab) ──
+function loadTimerState() {
+  try {
+    var s = localStorage.getItem('co_timer_state');
+    if (!s) return;
+    var obj = JSON.parse(s);
+    _timerPauseOffset = obj.offset || 0;
+    _timerPaused      = obj.paused || false;
+    _timerPausedAt    = obj.pausedAt || null;
+  } catch(e) {}
+}
+
+function saveTimerState() {
+  try {
+    localStorage.setItem('co_timer_state', JSON.stringify({
+      offset:   _timerPauseOffset,
+      paused:   _timerPaused,
+      pausedAt: _timerPausedAt
+    }));
+  } catch(e) {}
+}
+
+// Listen for state changes from other tabs (e.g. painel → TV)
+window.addEventListener('storage', function(e) {
+  if (e.key === 'co_timer_state') {
+    loadTimerState();
+    updatePauseBtn();
+  }
+});
+
+// Load state on startup
+loadTimerState();
+
 function now() {
   if (_timerPaused && _timerPausedAt !== null) {
     return _timerPausedAt - _timerPauseOffset;
@@ -588,6 +621,7 @@ function pauseTimers() {
   if (_timerPaused) return;
   _timerPaused = true;
   _timerPausedAt = Date.now();
+  saveTimerState();
   updatePauseBtn();
   toast('Cronômetros pausados', 'warn', 3000);
 }
@@ -597,6 +631,7 @@ function resumeTimers() {
   _timerPauseOffset += Date.now() - _timerPausedAt;
   _timerPausedAt = null;
   _timerPaused = false;
+  saveTimerState();
   updatePauseBtn();
   toast('Cronômetros retomados', 'ok', 3000);
 }
@@ -621,18 +656,18 @@ function checkAutoTimerSchedule() {
   var mins = h * 60 + m;
   var pauseMins  = 18 * 60 + 15;  // 18:15
   var resumeMins =  8 * 60 + 30;  //  8:30
-  // Pause at 18:15 (within a 1-min window)
   if (mins === pauseMins && !_timerPaused) {
     _timerPaused = true;
     _timerPausedAt = Date.now();
+    saveTimerState();
     updatePauseBtn();
     toast('Cronômetros pausados automaticamente (18:15)', 'warn', 5000);
   }
-  // Resume at 08:30 (within a 1-min window)
   if (mins === resumeMins && _timerPaused) {
     _timerPauseOffset += Date.now() - _timerPausedAt;
     _timerPausedAt = null;
     _timerPaused = false;
+    saveTimerState();
     updatePauseBtn();
     toast('Cronômetros retomados automaticamente (08:30)', 'ok', 5000);
   }
