@@ -539,7 +539,9 @@ function applyTheme(t){
 function toggleTheme(){var c=getStoredTheme();applyTheme(c==='dark'?'light':'dark');}
 applyTheme(getStoredTheme());
 const SUPA_URL = 'https://egshgwnnaxfvtxwvgnnh.supabase.co';
+
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnc2hnd25uYXhmdnR4d3Znbm5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQ2MjIsImV4cCI6MjA5MDgzMDYyMn0.udgUHpDU4wldbwsnl46AuzyljIRxNPtY00n6YrOtje4';
+
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const SETORES = ['atendimento','estoque','corte','separacao','faturamento'];
 const PROXIMO_SETOR = {atendimento:'estoque',estoque:'corte',corte:'separacao',separacao:'faturamento'};
@@ -1334,7 +1336,7 @@ function renderTransCard(o){
     acoes+='<button class="bexc" onclick="openDeletePedido(\''+o.id+'\')">Excluir</button>';
   }
   // ── MUDANÇA: data-transit-since para atualização in-place ──
-  return '<div class="card transito '+pC+' '+sC+'"><div class="tlbl"><span class="dp"></span><span data-transit-since="'+tsMs(o.pendente_desde)+'">'+(alerta?'Aguardando há ':'Aguard. confirmação há ')+fmtT(elapsed)+'</span></div><div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+(o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+'<div class="card-meta">De: '+(SL[origem]||origem)+' → '+(SL[dest]||dest)+'</div><div class="ca">'+acoes+'</div></div>';
+  return '<div class="card transito '+pC+' '+sC+'"><div class="tlbl"><span class="dp"></span><span data-transit-since="'+tsMs(o.pendente_desde)+'">'+(alerta?'Aguardando há ':'Aguard. confirmação há ')+fmtT(elapsed)+'</span></div><div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>'+(o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'')+'<div class="card-meta" style="padding-left:2px">'+(SL[origem]||origem)+' → '+(SL[dest]||dest)+'</div><div class="ca">'+acoes+'</div></div>';
 }
 function renderCard(o,setor){
   var t = calcTotalMs(o);
@@ -1382,9 +1384,9 @@ function renderCard(o,setor){
   var totalFreezeAttr = t.freeze ? ' data-timer-freeze="'+t.freeze+'"' : '';
 
   return '<div class="card '+pC+' '+(o.status==='pronto_balcao'?'balcao-ready':'')+'">' +
-    '<div class="card-top"><span class="card-num">#'+o.numero+'</span><div style="display:flex;gap:4px;align-items:center">'+prioBadge(prio)+(podeCriarPedido()?'<button class="bmv" style="padding:1px 5px;font-size:10px;line-height:1.4;border-radius:5px;min-width:0;flex-shrink:0" onclick="togglePrio(\''+o.id+'\',\''+prio+'\')">⇄</button>':'')+'</div></div>' +
+    '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+prioBadge(prio)+'</div>' +
     (o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'') +
-    '<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>' +
+    '<div class="card-meta" style="display:flex;align-items:center;gap:6px"><span>Entrada: '+hora+' · Por: '+o.criado_por+'</span>'+(podeCriarPedido()?'<button class="bmv" style="padding:1px 7px;font-size:10px;line-height:1.4;border-radius:5px;min-width:0;flex-shrink:0;margin-left:auto" onclick="togglePrio(\''+o.id+'\',\''+prio+'\')">⇄</button>':'')+'</div>' +
     prontoHtml +
     (o.num_nota?'<div class="card-nota">NF: '+o.num_nota+'</div>':'') +
     '<div class="ct">' +
