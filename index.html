@@ -135,19 +135,19 @@ main{padding:24px;max-width:1500px;margin:0 auto;width:100%;position:relative;z-
 .ca{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .ca>*:last-child:nth-child(odd){grid-column:1/-1}
 .ca>button,.ca>span{width:100%;box-sizing:border-box;justify-content:center}
-.bmv{padding:8px 18px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
+.bmv{padding:6px 14px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
 .bmv:hover{background:#2563eb;transform:translateY(-1px)}
-.bret{padding:8px 18px;background:#f97316;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
+.bret{padding:6px 14px;background:#f97316;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
 .bret:hover{background:#ea6c08;transform:translateY(-1px)}
-.bfin{padding:8px 18px;background:#22d3a7;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
+.bfin{padding:6px 14px;background:#22d3a7;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .2s;font-weight:700}
 .bfin:hover{background:#10b981;transform:translateY(-1px)}
-.bcon{padding:8px 20px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
+.bcon{padding:6px 14px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
 .bcon:hover{background:#2563eb;transform:translateY(-1px)}
-.boc{padding:8px 18px;background:#f59e0b;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
+.boc{padding:6px 14px;background:#f59e0b;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
 .boc:hover{background:#d97706;transform:translateY(-1px)}
-.bexc{padding:8px 18px;background:#ef4444;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
+.bexc{padding:6px 14px;background:#ef4444;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;transition:all .2s}
 .bexc:hover{background:#dc2626;transform:translateY(-1px)}
-.bcall{padding:8px 20px;background:#22d3a7;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;animation:blinkCall 1.2s infinite;transition:all .2s}
+.bcall{padding:6px 14px;background:#22d3a7;border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:700;animation:blinkCall 1.2s infinite;transition:all .2s}
 .bcall:hover{background:#10b981;transform:translateY(-1px)}
 .card.balcao-ready{background:rgba(34,211,167,.04);border-color:rgba(34,211,167,.3)}
 .card.balcao-ready .card-nota{color:var(--accent)}
@@ -317,22 +317,21 @@ main{padding:24px;max-width:1500px;margin:0 auto;width:100%;position:relative;z-
     <div class="sc" style="max-width:none;margin-bottom:24px;padding:16px 18px">
       <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
         <div class="f" style="margin-bottom:0;min-width:180px">
+          <label class="fl">Nº Pedido</label>
+          <input type="text" id="rel-pedido-num" placeholder="Buscar pedido..." onkeydown="if(event.key==='Enter')filtrarPorPedido()"/>
+        </div>
+        <button class="bcon" onclick="filtrarPorPedido()">Buscar</button>
+        <div class="f" style="margin-bottom:0;min-width:160px">
           <label class="fl">Data inicial</label>
           <input type="date" id="rel-date-start"/>
         </div>
-        <div class="f" style="margin-bottom:0;min-width:180px">
+        <div class="f" style="margin-bottom:0;min-width:160px">
           <label class="fl">Data final</label>
           <input type="date" id="rel-date-end"/>
         </div>
         <button class="bok" onclick="aplicarFiltroRelatorios()">Filtrar</button>
-        <button class="bcan" onclick="irHojeRelatorios()">Hoje</button>
-        <button class="bcan" onclick="exportarPedidosExcel()">Exportar Excel</button>
-        <div class="f" style="margin-bottom:0;min-width:140px">
-          <label class="fl">Nº Pedido</label>
-          <input type="text" id="rel-pedido-num" placeholder="Filtrar..." onkeydown="if(event.key==='Enter')filtrarPorPedido()"/>
-        </div>
-        <button class="bcan" onclick="filtrarPorPedido()">Buscar</button>
-        <button class="bcan" onclick="limparFiltroPedido()">Limpar</button>
+        <button class="bcan" onclick="limparFiltroPedido()">Limpar Filtros</button>
+        <button class="bmv" style="background:#10b981" onclick="exportarPedidosExcel()">Exportar .xlsx</button>
       </div>
       <div id="rel-sub" style="color:var(--muted);font-size:12px;margin-top:12px"></div>
     </div>
@@ -1381,7 +1380,7 @@ function renderCard(o,setor){
   var totalFreezeAttr = t.freeze ? ' data-timer-freeze="'+t.freeze+'"' : '';
 
   return '<div class="card '+pC+' '+(o.status==='pronto_balcao'?'balcao-ready':'')+'">' +
-    '<div class="card-top"><span class="card-num">#'+o.numero+'</span><div style="display:flex;gap:4px;align-items:center">'+prioBadge(prio)+(podeCriarPedido()?'<button class="bmv" style="padding:2px 6px;font-size:9px" onclick="togglePrio(\''+o.id+'\',\''+prio+'\')">⇄</button>':'')+'</div></div>' +
+    '<div class="card-top"><span class="card-num">#'+o.numero+'</span><div style="display:flex;gap:4px;align-items:center">'+prioBadge(prio)+(podeCriarPedido()?'<button class="bmv" style="padding:2px 5px;font-size:9px;line-height:1;border-radius:6px;min-width:0;flex-shrink:0;align-self:center" onclick="togglePrio(\''+o.id+'\',\''+prio+'\')">⇄</button>':'')+'</div></div>' +
     (o.nome_cliente?'<div class="card-cli">'+o.nome_cliente+'</div>':'') +
     '<div class="card-meta">Entrada: '+hora+' · Por: '+o.criado_por+'</div>' +
     prontoHtml +
