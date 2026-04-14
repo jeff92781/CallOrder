@@ -1673,7 +1673,7 @@ async function createOrder(){
     closeM('m-new-order');
     if(el('no-num-feedback'))el('no-num-feedback').textContent='';
     var agora=new Date().toISOString();
-    var payload={numero:numNorm,setor:'atendimento',setor_pendente:'',status:'em_andamento',criado_por:ME.login,entrada_at:agora,setor_entrada_at:agora,nome_cliente:cli,prioridade:prio,num_nota:'',valor_pedido:valorPedido,vendedor:vendedor,nome_retirada:(el('no-retirada').value||'').trim()};
+    var payload={numero:numNorm,setor:'atendimento',setor_pendente:'',status:'em_andamento',criado_por:ME.login,entrada_at:agora,setor_entrada_at:agora,nome_cliente:cli,prioridade:prio,num_nota:'',valor_pedido:valorPedido,vendedor:vendedor,nome_retirada:(el('no-retirada').value||'').trim(),parcial:parcial};
     var res=await sb.from('pedidos').insert(payload);
     // Fallback: se coluna 'parcial' ainda não existe no banco, tenta sem ela
     if(res.error&&res.error.message&&res.error.message.indexOf('parcial')>=0){
