@@ -361,8 +361,9 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div id="bars-conf" class="adm-only" style="margin-bottom:28px;display:none"></div>
     <div class="st">Registro dos pedidos</div>
     <table class="rkt">
-      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th></tr></thead>
+      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th></tr></thead>
       <tbody id="pedidos-dia-body"></tbody>
+      <tfoot id="pedidos-dia-tfoot"></tfoot>
     </table>
   </main>
 </div>
@@ -437,7 +438,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
       <table class="utbl" id="agr-table">
-        <thead><tr><th style="width:30px"></th><th>Pedido</th><th>Cliente</th><th>Nota Fiscal</th><th>Valor NF</th><th>Entrada</th><th>Dias</th><th>Ações</th></tr></thead>
+        <thead><tr><th style="width:30px"></th><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Nota Fiscal</th><th>Valor NF</th><th>Entrada</th><th>Dias</th><th>Ações</th></tr></thead>
         <tbody id="agr-tbody"></tbody>
       </table>
     </div>
@@ -507,6 +508,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
       <select id="no-prio"><option value="retira">Retira</option><option value="balcao">Balcão</option></select>
     </div>
     <div class="f"><label class="fl">Observação (opcional)</label><input type="text" id="no-obs"/></div>
+    <div class="f"><label class="fl">Vendedor (opcional)</label><input type="text" id="no-vendedor" placeholder="Nome do vendedor responsável"/></div>
     <div class="f"><label class="fl">Valor do Pedido R$ (opcional)</label><input type="number" id="no-valor" placeholder="0.00" step="0.01" min="0"/></div>
     <div class="ma"><button class="bcan" onclick="closeM('m-new-order')">Cancelar</button><button class="bok" onclick="createOrder()">Criar Pedido</button></div>
   </div>
@@ -553,6 +555,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div class="f"><label class="fl">Número do Pedido *</label><input type="text" id="agr-m-num" placeholder="Ex: 00123"/></div>
     <div class="f"><label class="fl">Nome do Cliente *</label><input type="text" id="agr-m-cli" placeholder="Nome completo"/></div>
     <div class="f"><label class="fl">Número da Nota Fiscal *</label><input type="text" id="agr-m-nf" placeholder="Ex: 51200"/></div>
+    <div class="f"><label class="fl">Valor da Nota Fiscal R$ (opcional)</label><input type="number" id="agr-m-valor" placeholder="0.00" step="0.01" min="0"/></div>
     <div class="f"><label class="fl">Data do Faturamento *</label><input type="date" id="agr-m-data"/></div>
     <div class="ma"><button class="bcan" onclick="closeM('m-agr-manual')">Cancelar</button><button class="bok" onclick="inserirAgRetiraManual()">Inserir</button></div>
   </div>
@@ -1212,7 +1215,7 @@ async function aplicarFiltroRelatorios(){
 }
 function exportarPedidosExcel(){
   if(!REPORT_PEDIDOS_EXPORT.length){toast('Não há registros para exportar no período selecionado.','warn');return;}
-  var linhas=[['Entrada','Pedido','Cliente','NF','Valor Faturado','Tempo total','Destino'].join(';')];
+  var linhas=[['Entrada','Pedido','Cliente','Vendedor','NF','Valor Faturado','Tempo total','Destino'].join(';')];
   var totalValor=0;
   REPORT_PEDIDOS_EXPORT.forEach(function(o){
     var total=(tsMs(o.finalizado_at)||now())-tsMs(o.entrada_at);
@@ -1222,13 +1225,14 @@ function exportarPedidosExcel(){
       escapeCsv(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—'),
       escapeCsv('#'+(o.numero||'')),
       escapeCsv(o.nome_cliente||'—'),
+      escapeCsv(o.vendedor||'—'),
       escapeCsv(o.num_nota||'—'),
       escapeCsv(valorNF>0?valorNF.toFixed(2):'—'),
       escapeCsv(fmtT(Math.max(0,total))),
       escapeCsv(getDestinoFinalTexto(o))
     ].join(';'));
   });
-  if(totalValor>0)linhas.push(['','','','TOTAL',totalValor.toFixed(2),'',''].join(';'));
+  if(totalValor>0)linhas.push(['','','','','TOTAL',totalValor.toFixed(2),'',''].join(';'));
   var blob=new Blob(['\ufeff'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1583,21 +1587,32 @@ async function chamarBalcao(id){
   }catch(e){toast(e.message,'err');}
   finally{ov(false);}
 }
-function openNewOrder(){el('no-num').value='';el('no-cli').value='';el('no-obs').value='';el('no-prio').value='retira';el('no-valor').value='';openM('m-new-order');}
+function openNewOrder(){el('no-num').value='';el('no-cli').value='';el('no-obs').value='';el('no-prio').value='retira';el('no-valor').value='';el('no-vendedor').value='';openM('m-new-order');}
 async function createOrder(){
   var num=el('no-num').value.trim(),cli=el('no-cli').value.trim(),prio=el('no-prio').value;
   var valorPedido=parseFloat(el('no-valor').value)||0;
+  var vendedor=(el('no-vendedor').value||'').trim();
   if(!num){toast('Informe o número do pedido.','err');return;}
   if(!cli){toast('Informe o nome do cliente.','err');return;}
   var numNorm=normalizarNumero(num);
-  closeM('m-new-order');ov(true);
+  ov(true);
   try{
-    // Busca duplicatas considerando número normalizado (sem zeros à esquerda)
-    var dup=await sb.from('pedidos').select('id,numero,status').not('status','in','("finalizado","cancelado")');
-    var isDup=(dup.data||[]).some(function(p){return normalizarNumero(p.numero)===numNorm;});
-    if(isDup){toast('Já existe um pedido ativo com este número (#'+numNorm+').','err');return;}
+    // Busca todos pedidos ativos com este número (normalizado, sem zeros à esquerda)
+    var dupRes=await sb.from('pedidos').select('id,numero,status,criado_por,entrada_at,nome_cliente,tem_pendencia,pendencia_status').not('status','in','("finalizado","cancelado")');
+    var dupMatch=(dupRes.data||[]).find(function(p){return normalizarNumero(p.numero)===numNorm;});
+    if(dupMatch){
+      // Formatar data/hora de criação
+      var dtCriacao=dupMatch.entrada_at?new Date(dupMatch.entrada_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+      if(dupMatch.tem_pendencia&&dupMatch.pendencia_status==='aberta'){
+        toast('⚠ Pedido #'+numNorm+' está em PENDÊNCIAS com saldo em aberto (lançado por '+dupMatch.criado_por+' em '+dtCriacao+'). Acesse a aba Pendências.','err',8000);
+      }else{
+        toast('Pedido #'+numNorm+' já está ativo ('+SL[dupMatch.status]||dupMatch.status+') — lançado por '+dupMatch.criado_por+' em '+dtCriacao+' — Cliente: '+(dupMatch.nome_cliente||'—'),'err',8000);
+      }
+      return;
+    }
+    closeM('m-new-order');
     var agora=new Date().toISOString();
-    var res=await sb.from('pedidos').insert({numero:numNorm,setor:'atendimento',setor_pendente:'',status:'em_andamento',criado_por:ME.login,entrada_at:agora,setor_entrada_at:agora,obs:el('no-obs').value,nome_cliente:cli,prioridade:prio,num_nota:'',valor_pedido:valorPedido});
+    var res=await sb.from('pedidos').insert({numero:numNorm,setor:'atendimento',setor_pendente:'',status:'em_andamento',criado_por:ME.login,entrada_at:agora,setor_entrada_at:agora,obs:el('no-obs').value,nome_cliente:cli,prioridade:prio,num_nota:'',valor_pedido:valorPedido,vendedor:vendedor});
     if(res.error)throw res.error;
     await refreshUI();
     toast('Pedido #'+numNorm+' criado — '+cli,'ok');
@@ -1762,12 +1777,22 @@ function renderRelatorios(){
 
   REPORT_PEDIDOS_EXPORT=all.slice();
 
+  var totalValorRel=all.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);
+
   el('pedidos-dia-body').innerHTML=all.length?all.map(function(o){
     var t=(o.finalizado_at?tsMs(o.finalizado_at):now())-tsMs(o.entrada_at);
     var destino=getDestinoFinal(o);
     var valorNF=parseFloat(o.valor_nota_fat)||0;
-    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
+    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td style="color:var(--cyan);font-weight:600">'+(o.vendedor||'<span style="color:var(--muted)">—</span>')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td></tr>';
+  }).join(''):'<tr><td colspan="8" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
+
+  if(el('pedidos-dia-tfoot')){
+    if(totalValorRel>0){
+      el('pedidos-dia-tfoot').innerHTML='<tr style="background:var(--accent-dim);border-top:2px solid rgba(34,211,167,.3)"><td colspan="4" style="padding:12px 14px;font-weight:700;color:var(--accent)">TOTAL DO PERÍODO</td><td></td><td style="padding:12px 14px;font-weight:800;color:var(--accent);font-size:14px">'+fmtBRL(totalValorRel)+'</td><td colspan="2"></td></tr>';
+    }else{
+      el('pedidos-dia-tfoot').innerHTML='';
+    }
+  }
 }
 var SETORlabel={todos:'Todos',atendimento:'Atendimento',estoque:'Estoque',corte:'Corte',separacao:'Separação',faturamento:'Faturamento'};
 function renderUsers(users){el('users-body').innerHTML=users.map(function(u){return '<tr><td>'+u.nome+'</td><td style="color:var(--muted)">'+u.login+'</td><td style="font-size:12px">'+(SETORlabel[u.setor]||u.setor)+'</td><td><span class="bar '+(u.role==='admin'?'bar-a':'bar-o')+'">'+u.role+'</span></td><td><span class="'+(u.ativo?'bon':'boff')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td><td><button class="bmv" onclick="toggleUser(\''+u.id+'\','+u.ativo+',\''+u.login+'\')">'+(u.ativo?'Desativar':'Ativar')+'</button></td></tr>';}).join('');}
@@ -2210,11 +2235,16 @@ async function inserirAgRetiraManual() {
   var cli = (el('agr-m-cli').value || '').trim();
   var nf = (el('agr-m-nf').value || '').trim();
   var data = (el('agr-m-data').value || '').trim();
-  if (!num || !cli || !nf || !data) { toast('Preencha todos os campos.', 'err'); return; }
-  // Verificar duplicidade normalizada
-  var dup = await sb.from('pedidos').select('id,numero,status').not('status','in','("finalizado","cancelado")');
-  var isDup = (dup.data||[]).some(function(p){return normalizarNumero(p.numero)===num;});
-  if(isDup){toast('Já existe um pedido ativo com o número #'+num+'.','err');return;}
+  var valorNF = parseFloat(el('agr-m-valor').value) || 0;
+  if (!num || !cli || !nf || !data) { toast('Preencha todos os campos obrigatórios.', 'err'); return; }
+  // Ag. Retira manual permite repetição de número (notas parciais do mesmo pedido).
+  // Apenas avisa se já existe outro registro com mesmo número para consciência do operador.
+  var dupRes = await sb.from('pedidos').select('id,numero,status,criado_por,entrada_at').eq('status','ag_retira');
+  var dupMatch = (dupRes.data||[]).find(function(p){return normalizarNumero(p.numero)===num;});
+  if(dupMatch){
+    var dtCriacao = dupMatch.entrada_at ? new Date(dupMatch.entrada_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    if(!confirm('⚠ Já existe um registro Ag. Retira com o pedido #'+num+' (lançado por '+dupMatch.criado_por+' em '+dtCriacao+'). Deseja inserir mesmo assim (nota parcial)?')){return;}
+  }
   closeM('m-agr-manual');
   ov(true);
   try {
@@ -2224,6 +2254,7 @@ async function inserirAgRetiraManual() {
       numero: num,
       nome_cliente: cli,
       num_nota: nf,
+      valor_nota_fat: valorNF,
       setor: 'separacao',
       setor_pendente: '',
       status: 'ag_retira',
@@ -2233,7 +2264,7 @@ async function inserirAgRetiraManual() {
       finalizado_at: dataFat,
       pendente_desde: dataFat,
       prioridade: 'retira',
-      obs: '[' + new Date().toLocaleString('pt-BR') + '] INSERÇÃO MANUAL · ' + ME.login + ' — Nota inserida manualmente no sistema com data de faturamento ' + data
+      obs: '[' + new Date().toLocaleString('pt-BR') + '] INSERÇÃO MANUAL · ' + ME.login + ' — Nota inserida manualmente no sistema com data de faturamento ' + data + (valorNF>0?' · Valor: '+fmtBRL(valorNF):'')
     });
     if (res.error) throw res.error;
     await refreshUI();
@@ -2242,6 +2273,7 @@ async function inserirAgRetiraManual() {
     el('agr-m-num').value = '';
     el('agr-m-cli').value = '';
     el('agr-m-nf').value = '';
+    el('agr-m-valor').value = '';
     el('agr-m-data').value = '';
   } catch(e) { toast(e.message, 'err'); }
   finally { ov(false); }
@@ -2281,6 +2313,7 @@ function renderAgRetira() {
       '<td><span class="dot-status ' + dotClass + '"></span></td>' +
       '<td style="font-family:var(--font-head);font-size:15px;font-weight:700">#' + o.numero + '</td>' +
       '<td>' + (o.nome_cliente || '—') + '</td>' +
+      '<td style="color:var(--cyan);font-weight:600">' + (o.vendedor || '<span style="color:var(--muted)">—</span>') + '</td>' +
       '<td style="color:var(--sep)">' + (o.num_nota || '—') + '</td>' +
       '<td style="color:var(--accent);font-weight:600">' + (valorNF > 0 ? fmtBRL(valorNF) : '—') + '</td>' +
       '<td style="color:var(--muted)">' + dataEntrada + '</td>' +
@@ -2297,7 +2330,7 @@ function renderAgRetira() {
 function exportarAgRetiraExcel() {
   var items = PEDIDOS.filter(function(o) { return o.status === 'ag_retira'; });
   if (!items.length) { toast('Nenhum pedido aguardando retirada.', 'warn'); return; }
-  var linhas = [['Pedido','Cliente','Nota Fiscal','Valor NF','Entrada','Dias'].join(';')];
+  var linhas = [['Pedido','Cliente','Vendedor','Nota Fiscal','Valor NF','Entrada','Dias'].join(';')];
   items.forEach(function(o) {
     var entrou = tsMs(o.pendente_desde);
     var dias = Math.floor((now() - entrou) / (24*60*60*1000));
@@ -2306,6 +2339,7 @@ function exportarAgRetiraExcel() {
     linhas.push([
       escapeCsv('#'+(o.numero||'')),
       escapeCsv(o.nome_cliente||'—'),
+      escapeCsv(o.vendedor||'—'),
       escapeCsv(o.num_nota||'—'),
       escapeCsv(valorNF>0?valorNF.toFixed(2):'—'),
       escapeCsv(dataEntrada),
@@ -2313,7 +2347,7 @@ function exportarAgRetiraExcel() {
     ].join(';'));
   });
   var totalValor = items.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);
-  if(totalValor>0) linhas.push(['','','TOTAL',totalValor.toFixed(2),'',''].join(';'));
+  if(totalValor>0) linhas.push(['','','','TOTAL',totalValor.toFixed(2),'',''].join(';'));
   var blob = new Blob(['\ufeff'+linhas.join('\r\n')], {type:'text/csv;charset=utf-8;'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
