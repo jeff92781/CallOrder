@@ -354,6 +354,12 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
         </div>
       </div>
       <div id="rel-sub" style="color:var(--muted);font-size:12px;margin-top:14px"></div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Operação:</span>
+        <button id="btn-tipo-todos" onclick="setFiltroTipo('')" style="padding:5px 16px;border-radius:20px;border:1px solid rgba(34,211,167,.4);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--accent-dim);color:var(--accent);transition:all .2s">Todos</button>
+        <button id="btn-tipo-balcao" onclick="setFiltroTipo('balcao')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Balcão</button>
+        <button id="btn-tipo-retira" onclick="setFiltroTipo('retira')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Retira</button>
+      </div>
     </div>
     <div class="kg" id="kpi-grid"></div>
     <div class="st">Tempo médio por setor</div>
@@ -362,7 +368,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div id="bars-conf" class="adm-only" style="margin-bottom:28px;display:none"></div>
     <div class="st">Registro dos pedidos</div>
     <table class="rkt">
-      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th></tr></thead>
+      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th></tr></thead>
       <tbody id="pedidos-dia-body"></tbody>
       <tfoot id="pedidos-dia-tfoot"></tfoot>
     </table>
@@ -1721,7 +1727,7 @@ function businessMs(startMs, endMs) {
 
 // ── MUDANÇA 6: renderTV unificado (usado por TV logada e TV pública) ──
 function buildTVRows(pedidos) {
-  var active = pedidos.filter(isTVVisivel);
+  var active = pedidos.filter(isTVVisivel).filter(function(o){ return (o.prioridade||'retira')==='balcao'; });
   active.sort(function(a,b){return tsMs(b.entrada_at)-tsMs(a.entrada_at);});
 
   var html = active.map(function(o){
@@ -1770,6 +1776,7 @@ function renderTV(){
 
 var _relFiltroPedido = '';
 var _relFiltroNota = '';
+var _relFiltroTipo = '';
 function aplicarTodosFiltros() {
   _relFiltroPedido = (el('rel-pedido-num') ? el('rel-pedido-num').value : '').trim();
   _relFiltroNota   = (el('rel-nota-num')   ? el('rel-nota-num').value   : '').trim();
@@ -1778,20 +1785,49 @@ function aplicarTodosFiltros() {
 function limparTodosFiltros() {
   _relFiltroPedido = '';
   _relFiltroNota   = '';
+  _relFiltroTipo   = '';
   if(el('rel-pedido-num')) el('rel-pedido-num').value = '';
   if(el('rel-nota-num'))   el('rel-nota-num').value   = '';
   REPORT_DATE_START = '';
   REPORT_DATE_END   = '';
   if(el('rel-date-start')) el('rel-date-start').value = '';
   if(el('rel-date-end'))   el('rel-date-end').value   = '';
+  atualizarBotoesTipo();
   aplicarFiltroRelatorios();
 }
 function filtrarPorPedido() { aplicarTodosFiltros(); }
 function limparFiltroPedido() { limparTodosFiltros(); }
+function atualizarBotoesTipo() {
+  var configs = {
+    '':       { color: 'var(--accent)',  bg: 'var(--accent-dim)',       border: 'rgba(34,211,167,.4)'  },
+    'balcao': { color: '#ef4444',        bg: 'rgba(239,68,68,.12)',      border: 'rgba(239,68,68,.4)'   },
+    'retira': { color: '#3b82f6',        bg: 'var(--blue-dim)',          border: 'rgba(59,130,246,.4)'  }
+  };
+  var ids = { '': 'btn-tipo-todos', 'balcao': 'btn-tipo-balcao', 'retira': 'btn-tipo-retira' };
+  Object.keys(ids).forEach(function(key) {
+    var btn = el(ids[key]);
+    if (!btn) return;
+    if (key === _relFiltroTipo) {
+      btn.style.color = configs[key].color;
+      btn.style.background = configs[key].bg;
+      btn.style.borderColor = configs[key].border;
+    } else {
+      btn.style.color = 'var(--muted)';
+      btn.style.background = 'var(--bg4)';
+      btn.style.borderColor = 'var(--border2)';
+    }
+  });
+}
+function setFiltroTipo(tipo) {
+  _relFiltroTipo = tipo;
+  atualizarBotoesTipo();
+  renderRelatorios();
+}
 function renderRelatorios(){
   var all=(PEDIDOS||[]).slice();
   if(_relFiltroPedido){all=all.filter(function(o){return o.numero && o.numero.indexOf(_relFiltroPedido)>=0;});}
   if(_relFiltroNota){all=all.filter(function(o){return o.num_nota && o.num_nota.indexOf(_relFiltroNota)>=0;});}
+  if(_relFiltroTipo){all=all.filter(function(o){return (o.prioridade||'retira')===_relFiltroTipo;});}
   var done=all.filter(function(o){return !!o.finalizado_at;});
   var active=all.filter(function(o){return !o.finalizado_at && o.status!=='cancelado';});
   var times=done.map(function(o){return businessMs(tsMs(o.entrada_at),tsMs(o.finalizado_at));}).filter(function(t){return t>0;});
@@ -1850,8 +1886,8 @@ function renderRelatorios(){
     var t=(o.finalizado_at?tsMs(o.finalizado_at):now())-tsMs(o.entrada_at);
     var destino=getDestinoFinal(o);
     var valorNF=parseFloat(o.valor_nota_fat)||0;
-    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
+    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td><td>'+prioBadge(o.prioridade||'retira')+'</td></tr>';
+  }).join(''):'<tr><td colspan="8" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
 
   if(el('pedidos-dia-tfoot')){
     if(totalValorRel>0){
