@@ -1850,7 +1850,7 @@ function renderRelatorios(){
     var _d1=new Date(REPORT_DATE_START+'T00:00:00'),_d2=new Date(REPORT_DATE_END+'T00:00:00');
     numDias=Math.max(1,Math.round((_d2-_d1)/(1000*60*60*24))+1);
   }
-  var mediaDia=all.length>0?(all.length/numDias).toFixed(1):'—';
+  var mediaDia=all.length>0?String(Math.round(all.length/numDias)):'—';
   el('kpi-grid').innerHTML=[
     {l:'Quantidade de pedidos',v:all.length,s:'no período'},
     {l:'Média por dia',v:mediaDia,s:'pedidos por dia no período'},
@@ -1860,7 +1860,7 @@ function renderRelatorios(){
     {l:'Mais rápido',v:minT?fmtTs(minT):'--',s:''},
     {l:'Mais lento',v:maxT?fmtTs(maxT):'--',s:''},
     {l:'Valor total faturado',v:(function(){var t=done.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return t>0?fmtBRL(t):'—';})(),s:'soma das notas faturadas'},
-    {l:'Valor médio',v:(function(){var ds=done.filter(function(o){return parseFloat(o.valor_nota_fat)>0;});var t=ds.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return ds.length&&t>0?fmtBRL(t/ds.length):'—';})(),s:'por pedido faturado'}
+    {l:'Ticket médio',v:(function(){var ds=done.filter(function(o){return parseFloat(o.valor_nota_fat)>0;});var t=ds.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return ds.length&&t>0?fmtBRL(t/ds.length):'—';})(),s:'por pedido faturado'}
   ].map(function(k){return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv" style="font-size:'+((k.v&&String(k.v).length>8)?'16px':'24px')+'">'+k.v+'</div><div class="ks">'+k.s+'</div></div>';}).join('');
 
   var sA={},sC={};
