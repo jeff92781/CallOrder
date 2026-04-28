@@ -632,6 +632,7 @@ const ALERT_MS = 5*60*1000;
 const JANELA_NARRACAO_BALCAO_MS = 90*1000;
 let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null;
 let REPORT_DATE_START='', REPORT_DATE_END='', REPORT_PEDIDOS_EXPORT=[];
+let PEDIDOS_REL=[];
 let _tvPub=[], _tvAudioReady=false;
 let _tvSpeakQueue=[], _tvSpeaking=false;
 let _occCtx=null, _audioCtx=null;
@@ -1203,6 +1204,7 @@ async function fetchPedidosRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
   var res=await sb.from('pedidos').select('*').gte('entrada_at',r.startIso).lte('entrada_at',r.endIso).order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
+  PEDIDOS_REL=res.data||[];
 }
 async function fetchMovsRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
@@ -1786,6 +1788,7 @@ function limparTodosFiltros() {
   _relFiltroPedido = '';
   _relFiltroNota   = '';
   _relFiltroTipo   = '';
+  PEDIDOS_REL = [];
   if(el('rel-pedido-num')) el('rel-pedido-num').value = '';
   if(el('rel-nota-num'))   el('rel-nota-num').value   = '';
   REPORT_DATE_START = '';
@@ -1821,10 +1824,15 @@ function atualizarBotoesTipo() {
 function setFiltroTipo(tipo) {
   _relFiltroTipo = tipo;
   atualizarBotoesTipo();
-  renderRelatorios();
+  // Re-sync PEDIDOS_REL in case polling overwrote PEDIDOS since the last fetch
+  if(PEDIDOS_REL.length) {
+    renderRelatorios();
+  } else {
+    aplicarFiltroRelatorios();
+  }
 }
 function renderRelatorios(){
-  var all=(PEDIDOS||[]).slice();
+  var all=(PEDIDOS_REL.length?PEDIDOS_REL:PEDIDOS||[]).slice();
   if(_relFiltroPedido){all=all.filter(function(o){return o.numero && o.numero.indexOf(_relFiltroPedido)>=0;});}
   if(_relFiltroNota){all=all.filter(function(o){return o.num_nota && o.num_nota.indexOf(_relFiltroNota)>=0;});}
   if(_relFiltroTipo){all=all.filter(function(o){return (o.prioridade||'retira')===_relFiltroTipo;});}
@@ -1837,17 +1845,22 @@ function renderRelatorios(){
 
   if(el('rel-sub'))el('rel-sub').textContent='Exibindo dados de '+periodo.label+'.';
 
+  var numDias=1;
+  if(REPORT_DATE_START&&REPORT_DATE_END){
+    var _d1=new Date(REPORT_DATE_START+'T00:00:00'),_d2=new Date(REPORT_DATE_END+'T00:00:00');
+    numDias=Math.max(1,Math.round((_d2-_d1)/(1000*60*60*24))+1);
+  }
+  var mediaDia=all.length>0?(all.length/numDias).toFixed(1):'—';
   el('kpi-grid').innerHTML=[
-    {l:'Total de pedidos',v:all.length,s:'no período'},
+    {l:'Quantidade de pedidos',v:all.length,s:'no período'},
+    {l:'Média por dia',v:mediaDia,s:'pedidos por dia no período'},
     {l:'Concluídos no faturamento',v:done.length,s:'no período'},
     {l:'Em andamento',v:active.filter(function(o){return o.status==='em_andamento';}).length,s:'agora'},
-    {l:'Aguard. confirmação',v:active.filter(function(o){return o.status==='aguardando';}).length,s:'agora'},
-    {l:'Prontos p/ balcão',v:active.filter(function(o){return o.status==='pronto_balcao' || o.status==='balcao_chamado';}).length,s:'após faturar'},
     {l:'Tempo médio',v:avg?fmtTs(avg):'--',s:'até o faturamento (horário comercial)'},
     {l:'Mais rápido',v:minT?fmtTs(minT):'--',s:''},
     {l:'Mais lento',v:maxT?fmtTs(maxT):'--',s:''},
     {l:'Valor total faturado',v:(function(){var t=done.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return t>0?fmtBRL(t):'—';})(),s:'soma das notas faturadas'},
-    {l:'Ticket médio',v:(function(){var ds=done.filter(function(o){return parseFloat(o.valor_nota_fat)>0;});var t=ds.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return ds.length&&t>0?fmtBRL(t/ds.length):'—';})(),s:'por pedido faturado'}
+    {l:'Valor médio',v:(function(){var ds=done.filter(function(o){return parseFloat(o.valor_nota_fat)>0;});var t=ds.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return ds.length&&t>0?fmtBRL(t/ds.length):'—';})(),s:'por pedido faturado'}
   ].map(function(k){return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv" style="font-size:'+((k.v&&String(k.v).length>8)?'16px':'24px')+'">'+k.v+'</div><div class="ks">'+k.s+'</div></div>';}).join('');
 
   var sA={},sC={};
