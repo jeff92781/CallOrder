@@ -1848,7 +1848,9 @@ function renderRelatorios(){
   var numDias=1;
   if(REPORT_DATE_START&&REPORT_DATE_END){
     var _d1=new Date(REPORT_DATE_START+'T00:00:00'),_d2=new Date(REPORT_DATE_END+'T00:00:00');
-    numDias=Math.max(1,Math.round((_d2-_d1)/(1000*60*60*24))+1);
+    var _cur=new Date(_d1),_uteis=0;
+    while(_cur<=_d2){var _dow=_cur.getDay();if(_dow!==0&&_dow!==6)_uteis++;_cur.setDate(_cur.getDate()+1);}
+    numDias=Math.max(1,_uteis);
   }
   var mediaDia=all.length>0?String(Math.round(all.length/numDias)):'—';
   el('kpi-grid').innerHTML=[
