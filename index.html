@@ -1760,7 +1760,7 @@ function buildTVRows(pedidos) {
   }).join('');
 
   var hoje=new Date();hoje.setHours(0,0,0,0);var hojeMs=hoje.getTime();
-  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.entrada_at)>=hojeMs;});
+  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.entrada_at)>=hojeMs && (o.prioridade||'retira')==='balcao';});
   var avgMs=done.length?done.reduce(function(s,o){return s+businessMs(tsMs(o.entrada_at),tsMs(o.finalizado_at));},0)/done.length:0;
 
   return { html: html, avgMs: avgMs, doneCount: done.length, activeCount: active.length };
@@ -1854,8 +1854,8 @@ function renderRelatorios(){
   el('kpi-grid').innerHTML=[
     {l:'Quantidade de pedidos',v:all.length,s:'no período'},
     {l:'Média por dia',v:mediaDia,s:'pedidos por dia no período'},
+    {l:'Valor médio/dia',v:(function(){var tv=done.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return tv>0?fmtBRL(tv/numDias):'—';})(),s:'faturado por dia no período'},
     {l:'Concluídos no faturamento',v:done.length,s:'no período'},
-    {l:'Em andamento',v:active.filter(function(o){return o.status==='em_andamento';}).length,s:'agora'},
     {l:'Tempo médio',v:avg?fmtTs(avg):'--',s:'até o faturamento (horário comercial)'},
     {l:'Mais rápido',v:minT?fmtTs(minT):'--',s:''},
     {l:'Mais lento',v:maxT?fmtTs(maxT):'--',s:''},
