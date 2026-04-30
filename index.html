@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iNjQiIHkxPSI0OCIgeDI9IjQ0OCIgeTI9IjQ2NCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwQjEyMjAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIwLjUiIHN0b3AtY29sb3I9IiMxMTFDMzQiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMEE2Qzc3Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iZ2xvdyIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIKICAgICAgZ3JhZGllbnRUcmFuc2Zvcm09InRyYW5zbGF0ZSgzNzYgOTgpIHJvdGF0ZSgxMjYuNTczKSBzY2FsZSgzMTEuODMpIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMzFEMEM2IiBzdG9wLW9wYWNpdHk9IjAuMzUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMzFEMEM2IiBzdG9wLW9wYWNpdHk9IjAiLz4KICAgIDwvcmFkaWFsR3JhZGllbnQ+CgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJzdHJva2VHcmFkIiB4MT0iMTU0IiB5MT0iMTI4IiB4Mj0iMzYwIiB5Mj0iMzc4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI0U5RkZGQiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjAuNDUiIHN0b3AtY29sb3I9IiNCNkZGRjQiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNTlFMUQ3Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgoKICAgIDxsaW5lYXJHcmFkaWVudCBpZD0idGFpbEdyYWQiIHgxPSIzMDAiIHkxPSIzMDYiIHgyPSI0MDciIHkyPSI0MDIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjOEJGRkYyIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzI4QzdCQSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KCiAgICA8ZmlsdGVyIGlkPSJzaGFkb3ciIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjQ4MCIgaGVpZ2h0PSI0ODAiIGZpbHRlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIj4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjE0IiBzdGREZXZpYXRpb249IjE4IiBmbG9vZC1jb2xvcj0iIzAyMDYxNyIgZmxvb2Qtb3BhY2l0eT0iMC4zOCIvPgogICAgPC9maWx0ZXI+CgogICAgPGZpbHRlciBpZD0ic29mdEdsb3ciIHg9IjkwIiB5PSI5MCIgd2lkdGg9IjMzMiIgaGVpZ2h0PSIzMzIiIGZpbHRlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIj4KICAgICAgPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iMTAiIHJlc3VsdD0iYmx1ciIvPgogICAgICA8ZmVNZXJnZT4KICAgICAgICA8ZmVNZXJnZU5vZGUgaW49ImJsdXIiLz4KICAgICAgICA8ZmVNZXJnZU5vZGUgaW49IlNvdXJjZUdyYXBoaWMiLz4KICAgICAgPC9mZU1lcmdlPgogICAgPC9maWx0ZXI+CiAgPC9kZWZzPgoKICA8ZyBmaWx0ZXI9InVybCgjc2hhZG93KSI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI2JnKSIvPgogICAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNnbG93KSIvPgogICAgPHJlY3QgeD0iMzMuNSIgeT0iMzMuNSIgd2lkdGg9IjQ0NSIgaGVpZ2h0PSI0NDUiIHJ4PSIxMTAuNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDciIHN0cm9rZS13aWR0aD0iMyIvPgogIDwvZz4KCiAgPHBhdGggZD0iTTk2IDM5MkMxNDYgMzU4IDE5MSAzNDQgMjUwIDM0NEMzMjAgMzQ0IDM1OCAzNjAgNDE2IDQwMiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CgogIDxnIGZpbHRlcj0idXJsKCNzb2Z0R2xvdykiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI1NiAyNDYpIj4KICAgIDxnIHN0cm9rZT0idXJsKCNzdHJva2VHcmFkKSIgc3Ryb2tlLXdpZHRoPSIyNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgICAgPHBhdGggZD0iTTAgLTEwNEMzNiAtMTA0IDcyIC03OCA4NCAtNDBDOTUgLTUgNzkgMzQgNDYgNTJDMjMgNjQgOSA4MyA5IDEwNCIgdHJhbnNmb3JtPSJyb3RhdGUoMCkiLz4KICAgICAgPHBhdGggZD0iTTAgLTEwNEMzNiAtMTA0IDcyIC03OCA4NCAtNDBDOTUgLTUgNzkgMzQgNDYgNTJDMjMgNjQgOSA4MyA5IDEwNCIgdHJhbnNmb3JtPSJyb3RhdGUoNjApIi8+CiAgICAgIDxwYXRoIGQ9Ik0wIC0xMDRDMzYgLTEwNCA3MiAtNzggODQgLTQwQzk1IC01IDc5IDM0IDQ2IDUyQzIzIDY0IDkgODMgOSAxMDQiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICAgICAgPHBhdGggZD0iTTAgLTEwNEMzNiAtMTA0IDcyIC03OCA4NCAtNDBDOTUgLTUgNzkgMzQgNDYgNTJDMjMgNjQgOSA4MyA5IDEwNCIgdHJhbnNmb3JtPSJyb3RhdGUoMTgwKSIvPgogICAgICA8cGF0aCBkPSJNMCAtMTA0QzM2IC0xMDQgNzIgLTc4IDg0IC00MEM5NSAtNSA3OSAzNCA0NiA1MkMyMyA2NCA5IDgzIDkgMTA0IiB0cmFuc2Zvcm09InJvdGF0ZSgyNDApIi8+CiAgICAgIDxwYXRoIGQ9Ik0wIC0xMDRDMzYgLTEwNCA3MiAtNzggODQgLTQwQzk1IC01IDc5IDM0IDQ2IDUyQzIzIDY0IDkgODMgOSAxMDQiIHRyYW5zZm9ybT0icm90YXRlKDMwMCkiLz4KICAgIDwvZz4KCiAgICA8Y2lyY2xlIHI9IjQxIiBmaWxsPSIjMEUxNzJBIiBzdHJva2U9IiNEN0ZGRjkiIHN0cm9rZS1vcGFjaXR5PSIwLjkyIiBzdHJva2Utd2lkdGg9IjE2Ii8+CiAgICA8Y2lyY2xlIHI9IjEyIiBmaWxsPSIjOEVGRkY0Ii8+CiAgPC9nPgoKICA8cGF0aCBkPSJNMzE1IDMyNEMzNDMgMzI0IDM3MCAzMzYgMzg2IDM1NkMzOTkgMzcyIDQwNiAzOTAgNDA2IDQxMCIgc3Ryb2tlPSJ1cmwoI3RhaWxHcmFkKSIgc3Ryb2tlLXdpZHRoPSIyMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTQwNiA0MTBWNDMyIiBzdHJva2U9InVybCgjdGFpbEdyYWQpIiBzdHJva2Utd2lkdGg9IjE4IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cmVjdCB4PSIzODgiIHk9IjQzMCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjIwIiByeD0iMTAiIGZpbGw9IiM3RUZGRjAiLz4KICA8cmVjdCB4PSIzOTQiIHk9IjQ0NiIgd2lkdGg9IjgiIGhlaWdodD0iMjAiIHJ4PSI0IiBmaWxsPSIjN0VGRkYwIi8+CiAgPHJlY3QgeD0iNDEwIiB5PSI0NDYiIHdpZHRoPSI4IiBoZWlnaHQ9IjIwIiByeD0iNCIgZmlsbD0iIzdFRkZGMCIvPgoKICA8Y2lyY2xlIGN4PSI0MTQiIGN5PSI0NjYiIHI9IjQiIGZpbGw9IiNGMEEzNUUiLz4KICA8Y2lyY2xlIGN4PSIzOTgiIGN5PSI0NjYiIHI9IjQiIGZpbGw9IiNGMEEzNUUiLz4KPC9zdmc+Cg==">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -165,7 +166,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
 .tv-tbl{width:100%;border-collapse:collapse}
 .tv-tbl th{font-family:var(--font-head);font-size:11px;font-weight:600;color:var(--muted);text-align:left;padding:12px 16px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.08em}
 .tv-tbl td{padding:14px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
-.tv-num{font-family:var(--font-head);font-size:26px;font-weight:800}
+.tv-num{font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text)}
 .tv-set{font-size:14px;font-weight:500;padding:4px 14px;border-radius:20px;display:inline-block}
 .tv-tim{font-size:17px;font-weight:500}
 .tv-foot{margin-top:28px;padding:16px 24px;background:var(--bg2);border-radius:var(--radius-lg);display:flex;gap:36px;border:1px solid var(--border);flex-wrap:wrap}
@@ -510,24 +511,52 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
 <div class="mb" id="m-new-order">
   <div class="mo">
     <div class="mt">Novo Pedido — Atendimento</div>
-    <div class="f"><label class="fl">Número do Pedido *</label><input type="text" id="no-num" placeholder="Ex: 00123" oninput="verificarDuplicataLive(this.value)"/>
-      <div id="no-num-feedback" style="margin-top:6px;font-size:11px;min-height:14px"></div>
+
+    <!-- PASSO 1: Entrada -->
+    <div id="no-step-1">
+      <!-- Botão importar PDF -->
+      <button onclick="importarPedidoPDF()" id="no-btn-pdf" style="width:100%;padding:22px 16px;background:rgba(34,211,167,.07);border:2px dashed rgba(34,211,167,.4);border-radius:12px;color:var(--accent);font-family:var(--font-head);font-size:14px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:background .2s;margin-bottom:6px" onmouseover="this.style.background='rgba(34,211,167,.14)'" onmouseout="this.style.background='rgba(34,211,167,.07)'">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span>Importar PDF do Pedido Interno</span>
+        <span style="font-size:11px;font-weight:400;opacity:.7;font-family:var(--font-mono)">Preenche número, cliente, vendedor e valor automaticamente</span>
+      </button>
+      <div id="pdf-import-status" style="margin-bottom:14px;font-size:11px;min-height:14px;color:var(--accent);text-align:center"></div>
+
+      <!-- Retira / Balcão -->
+      <div class="f"><label class="fl">Tipo de Entrega</label>
+        <select id="no-prio"><option value="retira">Retira</option><option value="balcao">Balcão</option></select>
+      </div>
+
+      <!-- Parcial -->
+      <div class="f" style="display:flex;align-items:center;gap:14px">
+        <label class="fl" style="margin-bottom:0">Pedido Parcial?</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="no-parcial" style="width:16px;height:16px;accent-color:var(--warn);cursor:pointer"/>
+          <span style="font-size:12px;color:var(--warn);font-weight:600">SIM — entrega parcial</span>
+        </label>
+      </div>
+
+      <div class="ma">
+        <button class="bcan" onclick="closeM('m-new-order')">Cancelar</button>
+        <button class="bok" style="background:var(--bg3);color:var(--text2);border:1px solid var(--bg4)" onclick="avancarStep2()">Preencher Manualmente →</button>
+      </div>
     </div>
-    <div class="f"><label class="fl">Nome do Cliente *</label><input type="text" id="no-cli" placeholder="Nome completo"/></div>
-    <div class="f"><label class="fl">Prioridade</label>
-      <select id="no-prio"><option value="retira">Retira</option><option value="balcao">Balcão</option></select>
+
+    <!-- PASSO 2: Formulário (oculto até avançar) -->
+    <div id="no-step-2" style="display:none">
+      <div class="f"><label class="fl">Número do Pedido *</label><input type="text" id="no-num" placeholder="Ex: 00123" oninput="verificarDuplicataLive(this.value)"/>
+        <div id="no-num-feedback" style="margin-top:6px;font-size:11px;min-height:14px"></div>
+      </div>
+      <div class="f"><label class="fl">Nome do Cliente *</label><input type="text" id="no-cli" placeholder="Nome completo"/></div>
+      <div class="f"><label class="fl">Nome de quem está retirando (opcional)</label><input type="text" id="no-retirada" placeholder="Ex: João Motorista"/></div>
+      <div class="f"><label class="fl">Vendedor *</label><input type="text" id="no-vendedor" placeholder="Nome do vendedor responsável"/></div>
+      <div class="f"><label class="fl">Valor do Pedido R$ *</label><input type="number" id="no-valor" placeholder="0.00" step="0.01" min="0"/></div>
+      <div class="ma">
+        <button class="bcan" onclick="voltarStep1()">← Voltar</button>
+        <button class="bok" onclick="createOrder()">Criar Pedido</button>
+      </div>
     </div>
-    <div class="f"><label class="fl">Nome de quem está retirando (opcional)</label><input type="text" id="no-retirada" placeholder="Ex: João Motorista"/></div>
-    <div class="f"><label class="fl">Vendedor *</label><input type="text" id="no-vendedor" placeholder="Nome do vendedor responsável"/></div>
-    <div class="f"><label class="fl">Valor do Pedido R$ *</label><input type="number" id="no-valor" placeholder="0.00" step="0.01" min="0"/></div>
-    <div class="f" style="display:flex;align-items:center;gap:14px">
-      <label class="fl" style="margin-bottom:0">Pedido Parcial?</label>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="no-parcial" style="width:16px;height:16px;accent-color:var(--warn);cursor:pointer"/>
-        <span style="font-size:12px;color:var(--warn);font-weight:600">SIM — entrega parcial</span>
-      </label>
-    </div>
-    <div class="ma"><button class="bcan" onclick="closeM('m-new-order')">Cancelar</button><button class="bok" onclick="createOrder()">Criar Pedido</button></div>
+
   </div>
 </div>
 <div class="mb" id="m-nota">
@@ -1624,7 +1653,107 @@ async function chamarBalcao(id){
   }catch(e){toast(e.message,'err');}
   finally{ov(false);}
 }
-function openNewOrder(){el('no-num').value='';el('no-cli').value='';el('no-retirada').value='';el('no-prio').value='retira';el('no-valor').value='';el('no-vendedor').value='';el('no-parcial').checked=false;if(el('no-num-feedback'))el('no-num-feedback').textContent='';openM('m-new-order');}
+function openNewOrder(){
+  // Limpa tudo
+  el('no-num').value='';el('no-cli').value='';el('no-retirada').value='';
+  el('no-prio').value='retira';el('no-valor').value='';el('no-vendedor').value='';
+  el('no-parcial').checked=false;
+  if(el('no-num-feedback'))el('no-num-feedback').textContent='';
+  if(el('pdf-import-status'))el('pdf-import-status').textContent='';
+  // Sempre começa no passo 1
+  el('no-step-1').style.display='';
+  el('no-step-2').style.display='none';
+  openM('m-new-order');
+}
+function avancarStep2(){
+  el('no-step-1').style.display='none';
+  el('no-step-2').style.display='';
+}
+function voltarStep1(){
+  el('no-step-2').style.display='none';
+  el('no-step-1').style.display='';
+}
+
+async function importarPedidoPDF(){
+  // Configura worker do PDF.js (CDN)
+  if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='application/pdf';
+  input.onchange=async function(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    var status=el('pdf-import-status');
+    if(status)status.textContent='⏳ Lendo PDF...';
+    try{
+      var arrayBuffer=await file.arrayBuffer();
+      var pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+      var fullText='';
+      for(var p=1;p<=pdf.numPages;p++){
+        var pg=await pdf.getPage(p);
+        var content=await pg.getTextContent();
+        fullText+=content.items.map(function(it){return it.str;}).join(' ')+'\n';
+      }
+
+      var num='',cli='',vend='',valor=0;
+      var preenchidos=[];
+
+      // Número do Pedido: "Número: 034448"
+      var mNum=fullText.match(/[Nn]ú?mero[:\s]+(\d+)/);
+      if(mNum){num=mNum[1].replace(/^0+/,'');if(!num)num=mNum[1];preenchidos.push('Número');}
+
+      // Nome do cliente: após código interno tipo "113260/01", pega o nome até dígitos ou espaço duplo
+      var mCli=fullText.match(/\d+\/\d+\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ\s&\.\-\/]{3,}?)(?=\s{2,}|\s+\d{5,})/);
+      if(mCli){cli=mCli[1].replace(/\s+/g,' ').trim();preenchidos.push('Cliente');}
+
+      // Vendedor: entre último "REPRESENTANTE" e "CONSIGNATARIO" ou fim de linha
+      // Vendedor: âncora em "PEDIDO REPRESENTANTE" (último header da linha) → nome → CONSIGNATARIO
+      var mVend=fullText.match(/PEDIDO REPRESENTANTE\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ\s]+?)\s+CONSIGNATARIO/i);
+      if(!mVend){
+        // fallback: qualquer texto entre REPRESENTANTE e CONSIGNATARIO
+        mVend=fullText.match(/REPRESENTANTE\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇÜ\s]{4,}?)\s+CONSIGNATARIO/i);
+      }
+      if(mVend){vend=mVend[1].replace(/\s+/g,' ').trim();preenchidos.push('Vendedor');}
+
+      // Valor: TOTAL DO PEDIDO é o último header da linha; o valor fica na linha seguinte de dados.
+      // Pega o último valor monetário após a última ocorrência de "TOTAL DO PEDIDO" no texto.
+      var mVal=null;
+      var idxTot=fullText.lastIndexOf('TOTAL DO PEDIDO');
+      if(idxTot>=0){
+        var aposTot=fullText.substring(idxTot);
+        var valsArr=aposTot.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
+        if(valsArr&&valsArr.length)mVal=[null,valsArr[valsArr.length-1]];
+      }
+      if(mVal){
+        valor=parseFloat(mVal[1].replace(/\./g,'').replace(',','.'));
+        if(valor>0)preenchidos.push('Valor');
+      }
+
+      // Preenche os campos
+      if(num){el('no-num').value=num;if(typeof verificarDuplicataLive==='function')verificarDuplicataLive(num);}
+      if(cli)el('no-cli').value=cli;
+      if(vend)el('no-vendedor').value=vend;
+      if(valor>0)el('no-valor').value=valor.toFixed(2);
+
+      if(preenchidos.length){
+        var msg='✅ '+preenchidos.join(', ')+' importado'+(preenchidos.length>1?'s':'')+'.';
+        if(status)status.textContent=msg;
+        toast('PDF: '+msg,'ok',4000);
+        avancarStep2();
+      }else{
+        if(status)status.textContent='⚠ Nenhum campo reconhecido neste PDF.';
+        toast('PDF importado, mas nenhum campo reconhecido.','warn',4000);
+      }
+    }catch(err){
+      if(status)status.textContent='';
+      toast('Erro ao ler PDF: '+err.message,'err',5000);
+      console.error('importarPedidoPDF:',err);
+    }
+  };
+  input.click();
+}
 
 var _dupCheckTimer=null;
 function verificarDuplicataLive(val){
@@ -1730,7 +1859,11 @@ function businessMs(startMs, endMs) {
 // ── MUDANÇA 6: renderTV unificado (usado por TV logada e TV pública) ──
 function buildTVRows(pedidos) {
   var active = pedidos.filter(isTVVisivel).filter(function(o){ return (o.prioridade||'retira')==='balcao'; });
-  active.sort(function(a,b){return tsMs(b.entrada_at)-tsMs(a.entrada_at);});
+  active.sort(function(a,b){
+    var tA=calcTotalMs(a); var msA=Math.max(0,(tA.freeze||now())-tA.entry);
+    var tB=calcTotalMs(b); var msB=Math.max(0,(tB.freeze||now())-tB.entry);
+    return msB-msA;
+  });
 
   var html = active.map(function(o){
     var t = calcTotalMs(o);
