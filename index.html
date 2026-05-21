@@ -653,7 +653,7 @@ function sectorIcon(setor){
 const BC = {atendimento:'#5DCAA5',estoque:'#7AD3C2',corte:'#85B7EB',separacao:'#FAC775',faturamento:'#ED93B1'};
 const ALERT_MS = 5*60*1000;
 const JANELA_NARRACAO_BALCAO_MS = 90*1000;
-let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null;
+let ME=null, PEDIDOS=[], MOVS=[], _ti=null, _notaTarget=null, _ch=null, _lastFetchTs=0;
 let REPORT_DATE_START='', REPORT_DATE_END='', REPORT_PEDIDOS_EXPORT=[];
 let PEDIDOS_REL=[];
 let _tvPub=[], _tvAudioReady=false;
@@ -867,8 +867,14 @@ function buildOccurrenceLine(tipo,setor,texto){
 function getPedidoById(id){return PEDIDOS.find(function(p){return p.id===id;});}
 async function appendObsPedido(id,linha){
   var pedido=getPedidoById(id);
-  var atual=pedido&&pedido.obs?String(pedido.obs):'';
-  var novo=(atual?atual+'\\n':'')+linha;
+  var atual='';
+  try{
+    var obsRes=await sb.from('pedidos').select('obs').eq('id',id).single();
+    if(!obsRes.error && obsRes.data && obsRes.data.obs) atual=String(obsRes.data.obs);
+  }catch(e){
+    atual=pedido&&pedido.obs?String(pedido.obs):'';
+  }
+  var novo=(atual?atual+'\n':'')+linha;
   var res=await sb.from('pedidos').update({obs:novo}).eq('id',id);
   if(res.error)throw res.error;
   if(pedido)pedido.obs=novo;
@@ -923,13 +929,13 @@ function refreshPedidosSoon(ms){
   _refreshTimer=setTimeout(function(){ refreshUI(); }, ms);
 }
 
-// ── MUDANÇA 4: Polling de 8s em vez de 3s (realtime já cobre o instantâneo) ──
+// ── MUDANÇA 4: Polling de 30s — realtime cobre o instantâneo; poll é só safety net ──
 function startPolling(){
   if(_pollTi)clearInterval(_pollTi);
   _pollTi=setInterval(function(){
     if(!ME)return;
     refreshUI();
-  },4000);
+  },30000);
 }
 function stopPolling(){
   if(_pollTi){clearInterval(_pollTi);_pollTi=null;}
@@ -943,7 +949,7 @@ async function restoreSession(){
     if(!saved || !saved.login || !saved.senha)return;
 
     ov(true);
-    var res=await sb.from('usuarios').select('*')
+    var res=await sb.from('usuarios').select('id,nome,login,senha,role,setor,ativo')
       .eq('login', saved.login)
       .eq('senha', saved.senha)
       .eq('ativo', true)
@@ -1164,7 +1170,7 @@ async function doLogin(){
   if(!l||!p){el('lerr').textContent='Preencha usuário e senha.';return;}
   ov(true);
   try{
-    var res=await sb.from('usuarios').select('*').eq('login',l).eq('senha',p).eq('ativo',true).single();
+    var res=await sb.from('usuarios').select('id,nome,login,senha,role,setor,ativo').eq('login',l).eq('senha',p).eq('ativo',true).single();
     if(res.error||!res.data){el('lerr').textContent='Usuário ou senha inválidos.';return;}
     applyLoggedUser(res.data);
     saveSession(res.data);
@@ -1213,25 +1219,29 @@ function startRealtime(){
     atualizarTelasAtivas();
   }).subscribe();
 }
+const PEDIDOS_COLS='id,numero,nome_cliente,status,setor,setor_pendente,entrada_at,setor_entrada_at,pendente_desde,finalizado_at,tipo,num_nota,valor_pedido,valor_nota_fat,valor_faturado,destino,prioridade,criado_por,nome_retirada,vendedor,parcial,tem_pendencia,pendencia_status,saldo_pendencia';
+const TV_COLS='id,numero,nome_cliente,status,setor,setor_pendente,entrada_at,setor_entrada_at,pendente_desde,finalizado_at,prioridade,nome_retirada';
 async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
-  var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia').order('entrada_at',{ascending:false});
+  var res=await sb.from('pedidos').select(PEDIDOS_COLS).or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia').order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
+  _lastFetchTs=Date.now();
 }
+const MOVS_COLS='id,pedido_id,setor_origem,setor_destino,usuario,entrada_at,saida_at,tempo_ms,confirmado_por,confirmado_at,tempo_confirmacao_ms';
 async function fetchMovs(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
-  var res=await sb.from('movimentacoes').select('*').gte('saida_at',hoje.toISOString());
+  var res=await sb.from('movimentacoes').select(MOVS_COLS).gte('saida_at',hoje.toISOString());
   MOVS=res.data||[];
 }
 async function fetchPedidosRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('pedidos').select('*').gte('entrada_at',r.startIso).lte('entrada_at',r.endIso).order('entrada_at',{ascending:false});
+  var res=await sb.from('pedidos').select(PEDIDOS_COLS).gte('entrada_at',r.startIso).lte('entrada_at',r.endIso).order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
   PEDIDOS_REL=res.data||[];
 }
 async function fetchMovsRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('movimentacoes').select('*').gte('saida_at',r.startIso).lte('saida_at',r.endIso);
+  var res=await sb.from('movimentacoes').select(MOVS_COLS).gte('saida_at',r.startIso).lte('saida_at',r.endIso);
   MOVS=res.data||[];
 }
 function irHojeRelatorios(){
@@ -1290,8 +1300,10 @@ async function go(name){
   allHide();el('screen-'+name).classList.add('active');
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(t){if((t.getAttribute('onclick')||'').indexOf("'"+name+"'")>=0)t.classList.add('active');});
-  if(name==='painel'){ov(true);await fetchPedidos();ov(false);_lastPainelSnap='';renderPainel();renderAgRetiraBadge();}
-  if(name==='tv'){ov(true);await fetchPedidos();ov(false);_lastTVSnap='';renderTV();}
+  // Só re-busca do Supabase se o dado tiver mais de 20s — realtime já mantém PEDIDOS atualizado
+  var precisaFetch=PEDIDOS.length===0||(Date.now()-_lastFetchTs>20000);
+  if(name==='painel'){if(precisaFetch){ov(true);await fetchPedidos();ov(false);}renderPainel();renderAgRetiraBadge();_lastPainelSnap='';}
+  if(name==='tv'){if(precisaFetch){ov(true);await fetchPedidos();ov(false);}_lastTVSnap='';renderTV();}
   if(name==='relatorios'){
     if(!REPORT_DATE_START||!REPORT_DATE_END){
       var hoje=fmtDateInput(new Date());
@@ -1304,9 +1316,9 @@ async function go(name){
   }
   if(name==='usuarios'){ov(true);var u=await fetchUsuarios();ov(false);renderUsers(u);}
   if(name==='config'){setTimeout(carregarVozes,100);}
-  if(name==='agretira'){ov(true);await fetchPedidos();ov(false);renderAgRetira();}
-  if(name==='ocorrencias'){ov(true);await fetchPedidos();ov(false);renderOcorrencias();}
-  if(name==='pendencias'){ov(true);await fetchPedidos();ov(false);renderPendencias();}
+  if(name==='agretira'){if(precisaFetch){ov(true);await fetchPedidos();ov(false);}renderAgRetira();}
+  if(name==='ocorrencias'){if(precisaFetch){ov(true);await fetchPedidos();ov(false);}renderOcorrencias();}
+  if(name==='pendencias'){if(precisaFetch){ov(true);await fetchPedidos();ov(false);}renderPendencias();}
 }
 
 // ── MUDANÇA 5: Clock SÓ atualiza texto do relógio + timers in-place ──
@@ -2175,7 +2187,7 @@ async function iniciarTVPublica(){
   async function carregarTVPublica(){
     try{
       var hoje=new Date();hoje.setHours(0,0,0,0);
-      var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia').order('entrada_at',{ascending:false});
+      var res=await sb.from('pedidos').select(TV_COLS).or('entrada_at.gte.'+hoje.toISOString()+',status.eq.balcao_chamado,status.eq.pronto_balcao,status.eq.em_andamento,status.eq.aguardando').order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       var snap = buildSnapshot(_tvPub);
       if (snap !== _lastTVPubSnap) {
@@ -2187,7 +2199,7 @@ async function iniciarTVPublica(){
   }
 
   await carregarTVPublica();
-  setInterval(carregarTVPublica, 5000);
+  setInterval(carregarTVPublica, 10000); // 10s — reduzido em relação ao polling agressivo original
 }
 
 // ── MUDANÇA: renderTVPub reutiliza buildTVRows ──
