@@ -1869,7 +1869,7 @@ function businessMs(startMs, endMs) {
 
 // ── MUDANÇA 6: renderTV unificado (usado por TV logada e TV pública) ──
 function buildTVRows(pedidos) {
-  var active = pedidos.filter(isTVVisivel).filter(function(o){ return (o.prioridade||'retira')==='balcao'; });
+  var active = pedidos.filter(isTVVisivel);
   active.sort(function(a,b){
     var tA=calcTotalMs(a); var msA=Math.max(0,(tA.freeze||now())-tA.entry);
     var tB=calcTotalMs(b); var msB=Math.max(0,(tB.freeze||now())-tB.entry);
@@ -1904,7 +1904,7 @@ function buildTVRows(pedidos) {
   }).join('');
 
   var hoje=new Date();hoje.setHours(0,0,0,0);var hojeMs=hoje.getTime();
-  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.entrada_at)>=hojeMs && (o.prioridade||'retira')==='balcao';});
+  var done=pedidos.filter(function(o){return o.status!=='cancelado' && !!o.finalizado_at && tsMs(o.entrada_at)>=hojeMs;});
   var avgMs=done.length?done.reduce(function(s,o){return s+businessMs(tsMs(o.entrada_at),tsMs(o.finalizado_at));},0)/done.length:0;
 
   return { html: html, avgMs: avgMs, doneCount: done.length, activeCount: active.length };
