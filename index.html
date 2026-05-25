@@ -876,6 +876,8 @@ async function appendObsPedido(id,linha){
 
 const SESSION_KEY = 'callorder_user';
 let _refreshTimer=null, _pollTi=null;
+let _lastFetchAt = 0;
+const FETCH_DEBOUNCE_MS = 15000; // Não rebusca se a última fetch foi há menos de 15s
 
 function saveSession(user){
   try{ localStorage.setItem(SESSION_KEY, JSON.stringify(user)); }catch(e){}
@@ -912,6 +914,7 @@ function upsertPedidoLocal(partial){
 async function refreshUI(){
   try{
     await fetchPedidos();
+    _lastFetchAt = Date.now();
     if (dataChanged()) {
       scheduleRender();
     }
@@ -929,7 +932,7 @@ function startPolling(){
   _pollTi=setInterval(function(){
     if(!ME)return;
     refreshUI();
-  },4000);
+  },60000); // 60s — Realtime cobre atualizações instantâneas; polling é só fallback
 }
 function stopPolling(){
   if(_pollTi){clearInterval(_pollTi);_pollTi=null;}
@@ -1215,23 +1218,35 @@ function startRealtime(){
 }
 async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
-  var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia').order('entrada_at',{ascending:false});
+  var res=await sb.from('pedidos')
+    .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por')
+    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
+    .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
 }
 async function fetchMovs(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
-  var res=await sb.from('movimentacoes').select('*').gte('saida_at',hoje.toISOString());
+  var res=await sb.from('movimentacoes')
+    .select('id,pedido_id,setor_origem,setor_destino,usuario,entrada_at,saida_at,tempo_ms,confirmado_por,confirmado_at,tempo_confirmacao_ms')
+    .gte('saida_at',hoje.toISOString());
   MOVS=res.data||[];
 }
 async function fetchPedidosRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('pedidos').select('*').gte('entrada_at',r.startIso).lte('entrada_at',r.endIso).order('entrada_at',{ascending:false});
+  var res=await sb.from('pedidos')
+    .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por')
+    .gte('entrada_at',r.startIso)
+    .lte('entrada_at',r.endIso)
+    .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
   PEDIDOS_REL=res.data||[];
 }
 async function fetchMovsRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('movimentacoes').select('*').gte('saida_at',r.startIso).lte('saida_at',r.endIso);
+  var res=await sb.from('movimentacoes')
+    .select('id,pedido_id,setor_origem,setor_destino,usuario,entrada_at,saida_at,tempo_ms,confirmado_por,confirmado_at,tempo_confirmacao_ms')
+    .gte('saida_at',r.startIso)
+    .lte('saida_at',r.endIso);
   MOVS=res.data||[];
 }
 function irHojeRelatorios(){
@@ -1285,13 +1300,20 @@ function exportarPedidosExcel(){
 }
 async function fetchUsuarios(){var res=await sb.from('usuarios').select('id,nome,login,role,setor,ativo').order('nome');return res.data||[];}
 function allHide(){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});}
+async function fetchPedidosSeNecessario(){
+  var agora=Date.now();
+  if(agora-_lastFetchAt>FETCH_DEBOUNCE_MS){
+    await fetchPedidos();
+    _lastFetchAt=agora;
+  }
+}
 async function go(name){
   if(ME)startPolling();
   allHide();el('screen-'+name).classList.add('active');
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(t){if((t.getAttribute('onclick')||'').indexOf("'"+name+"'")>=0)t.classList.add('active');});
-  if(name==='painel'){ov(true);await fetchPedidos();ov(false);_lastPainelSnap='';renderPainel();renderAgRetiraBadge();}
-  if(name==='tv'){ov(true);await fetchPedidos();ov(false);_lastTVSnap='';renderTV();}
+  if(name==='painel'){ov(true);await fetchPedidosSeNecessario();ov(false);_lastPainelSnap='';renderPainel();renderAgRetiraBadge();}
+  if(name==='tv'){ov(true);await fetchPedidosSeNecessario();ov(false);_lastTVSnap='';renderTV();}
   if(name==='relatorios'){
     if(!REPORT_DATE_START||!REPORT_DATE_END){
       var hoje=fmtDateInput(new Date());
@@ -1304,9 +1326,9 @@ async function go(name){
   }
   if(name==='usuarios'){ov(true);var u=await fetchUsuarios();ov(false);renderUsers(u);}
   if(name==='config'){setTimeout(carregarVozes,100);}
-  if(name==='agretira'){ov(true);await fetchPedidos();ov(false);renderAgRetira();}
-  if(name==='ocorrencias'){ov(true);await fetchPedidos();ov(false);renderOcorrencias();}
-  if(name==='pendencias'){ov(true);await fetchPedidos();ov(false);renderPendencias();}
+  if(name==='agretira'){ov(true);await fetchPedidosSeNecessario();ov(false);renderAgRetira();}
+  if(name==='ocorrencias'){ov(true);await fetchPedidosSeNecessario();ov(false);renderOcorrencias();}
+  if(name==='pendencias'){ov(true);await fetchPedidosSeNecessario();ov(false);renderPendencias();}
 }
 
 // ── MUDANÇA 5: Clock SÓ atualiza texto do relógio + timers in-place ──
@@ -2175,7 +2197,10 @@ async function iniciarTVPublica(){
   async function carregarTVPublica(){
     try{
       var hoje=new Date();hoje.setHours(0,0,0,0);
-      var res=await sb.from('pedidos').select('*').or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia').order('entrada_at',{ascending:false});
+      var res=await sb.from('pedidos')
+        .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por')
+        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
+        .order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       var snap = buildSnapshot(_tvPub);
       if (snap !== _lastTVPubSnap) {
