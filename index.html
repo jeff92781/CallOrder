@@ -1219,22 +1219,20 @@ function startRealtime(){
 async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
   var res=await sb.from('pedidos')
-    .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por,nome_retirada,parcial,pendencia_status,prioridade,saldo_pendencia,tem_pendencia,valor_pedido')
+    .select('*')
     .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
     .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
 }
 async function fetchMovs(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
-  var res=await sb.from('movimentacoes')
-    .select('id,pedido_id,setor_origem,setor_destino,usuario,entrada_at,saida_at,tempo_ms,confirmado_por,confirmado_at,tempo_confirmacao_ms')
-    .gte('saida_at',hoje.toISOString());
+  var res=await sb.from('movimentacoes').select('*').gte('saida_at',hoje.toISOString());
   MOVS=res.data||[];
 }
 async function fetchPedidosRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
   var res=await sb.from('pedidos')
-    .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por,nome_retirada,parcial,pendencia_status,prioridade,saldo_pendencia,tem_pendencia,valor_pedido')
+    .select('*')
     .gte('entrada_at',r.startIso)
     .lte('entrada_at',r.endIso)
     .order('entrada_at',{ascending:false});
@@ -1243,10 +1241,7 @@ async function fetchPedidosRelatorio(startStr,endStr){
 }
 async function fetchMovsRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('movimentacoes')
-    .select('id,pedido_id,setor_origem,setor_destino,usuario,entrada_at,saida_at,tempo_ms,confirmado_por,confirmado_at,tempo_confirmacao_ms')
-    .gte('saida_at',r.startIso)
-    .lte('saida_at',r.endIso);
+  var res=await sb.from('movimentacoes').select('*').gte('saida_at',r.startIso).lte('saida_at',r.endIso);
   MOVS=res.data||[];
 }
 function irHojeRelatorios(){
@@ -2198,7 +2193,7 @@ async function iniciarTVPublica(){
     try{
       var hoje=new Date();hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos')
-        .select('id,numero,nome_cliente,status,setor,setor_pendente,setor_entrada_at,pendente_desde,entrada_at,finalizado_at,num_nota,valor_nota_fat,tipo_pedido,destino_final,obs,vendedor,criado_por,nome_retirada,parcial,pendencia_status,prioridade,saldo_pendencia,tem_pendencia,valor_pedido')
+        .select('*')
         .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
         .order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
