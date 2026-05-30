@@ -307,7 +307,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
       <div class="tv-clk" id="tv-clock">--:--:--</div>
     </div>
     <table class="tv-tbl">
-      <thead><tr><th>Pedido</th><th>Cliente</th><th>Setor</th><th>Tempo no Setor</th><th>Tempo Total</th></tr></thead>
+      <thead><tr><th>Pedido</th><th>Cliente</th><th>Setor</th><th>Tempo no Setor</th><th>Tempo Total</th><th>Status</th></tr></thead>
       <tbody id="tv-body"></tbody>
     </table>
     <div class="tv-foot">
@@ -500,7 +500,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div style="font-size:22px;font-weight:600;margin-left:auto;color:#ffffff" id="tvp-clock">--:--:--</div>
   </div>
   <div style="background:#111827;border:1px solid rgba(99,179,237,0.1);border-radius:16px;overflow:hidden">
-  <table class="tv-tbl" style="color:#ffffff"><thead><tr style="border-bottom:1px solid rgba(99,179,237,0.12)"><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Pedido</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Cliente</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Setor</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Tempo no Setor</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Tempo Total</th></tr></thead><tbody id="tvp-body" style="color:#ffffff"></tbody></table>
+  <table class="tv-tbl" style="color:#ffffff"><thead><tr style="border-bottom:1px solid rgba(99,179,237,0.12)"><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Pedido</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Cliente</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Setor</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Tempo no Setor</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Tempo Total</th><th style="color:rgba(255,255,255,0.6);font-size:13px;padding:14px 18px">Status</th></tr></thead><tbody id="tvp-body" style="color:#ffffff"></tbody></table>
   </div>
   <div class="tv-foot" style="margin-top:28px;background:#111827;border:1px solid rgba(99,179,237,0.1);border-radius:16px">
     <div><div style="font-size:14px;color:rgba(255,255,255,0.55);font-weight:500">Tempo médio do dia</div><div style="font-size:24px;font-weight:700;color:#22d3a7" id="tvp-avg">--:--</div></div>
@@ -1901,7 +1901,7 @@ function buildTVRows(pedidos) {
     var sFreezeAttr = sFreeze ? ' data-timer-freeze-ts="'+sFreeze+'"' : '';
     var tFreezeAttr = t.freeze ? ' data-timer-freeze-ts="'+t.freeze+'"' : '';
 
-    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim" data-timer-entry-ts="'+adjSEntry+'"'+sFreezeAttr+'>'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'" data-timer-entry-ts="'+adjTEntry+'"'+tFreezeAttr+'>'+fmtTs(totalMs)+'</span></td></tr>';
+    return '<tr class="'+rC+'"><td><span class="tv-num">#'+o.numero+'</span></td><td style="font-size:13px">'+(o.nome_cliente||'—')+'</td><td>'+sl+'</td><td><span class="tv-tim" data-timer-entry-ts="'+adjSEntry+'"'+sFreezeAttr+'>'+fmtTs(setorMs)+'</span></td><td><span class="tv-tim" style="color:'+tColor+'" data-timer-entry-ts="'+adjTEntry+'"'+tFreezeAttr+'>'+fmtTs(totalMs)+'</span></td><td>'+getTipoEntregaHTML(o)+'</td></tr>';
   }).join('');
 
   var hoje=new Date();hoje.setHours(0,0,0,0);var hojeMs=hoje.getTime();
