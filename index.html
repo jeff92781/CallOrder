@@ -36,6 +36,13 @@
 }
 
 /* ── Heatmap dia da semana ── */
+
+/* -- Scroll containers -- */
+.hm-scroll-outer{max-height:336px;overflow-y:auto;overflow-x:auto;padding-bottom:4px}
+.rkt-scroll-wrap{max-height:942px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:28px}
+.rkt thead th{position:sticky;top:0;background:var(--bg2);z-index:2;border-bottom:1px solid var(--border)}
+.rkt tfoot td{position:sticky;bottom:0;z-index:2}
+.hm-hour-lbl{font-size:11px;color:var(--muted);padding-right:10px;white-space:nowrap;font-family:var(--font-mono);vertical-align:middle;text-align:right;font-weight:600}
 .hm-wrap{overflow-x:auto;padding-bottom:8px}
 .hm-tbl{border-collapse:separate;border-spacing:5px;min-width:480px}
 .hm-head-col{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:0 4px 10px;text-align:center;min-width:52px}
@@ -368,6 +375,19 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
           <label class="fl">Nº Nota Fiscal</label>
           <input type="text" id="rel-nota-num" placeholder="Ex: 060038" onkeydown="if(event.key==='Enter')aplicarTodosFiltros()"/>
         </div>
+        <div class="f" style="margin-bottom:0;min-width:130px">
+          <label class="fl">Dia da semana</label>
+          <select id="filtro-dow" onchange="onFiltroDowChange()" style="width:100%;padding:11px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;transition:all .2s">
+            <option value="">Todos</option>
+            <option value="1">Segunda</option>
+            <option value="2">Terça</option>
+            <option value="3">Quarta</option>
+            <option value="4">Quinta</option>
+            <option value="5">Sexta</option>
+            <option value="6">Sábado</option>
+            <option value="0">Domingo</option>
+          </select>
+        </div>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-shrink:0">
           <button title="Pesquisar" onclick="aplicarTodosFiltros()" style="width:40px;height:40px;background:#3b82f6;border:none;border-radius:var(--radius);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -390,34 +410,30 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
         <button id="btn-tipo-balcao" onclick="setFiltroTipo('balcao')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Balcão</button>
         <button id="btn-tipo-retira" onclick="setFiltroTipo('retira')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Retira</button>
       </div>
-      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Dia da semana:</span>
-        <select id="filtro-dow" onchange="onFiltroDowChange()" style="padding:5px 14px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--text);outline:none;transition:all .2s">
-          <option value="">Todos os dias</option>
-          <option value="1">Segunda-feira</option>
-          <option value="2">Terça-feira</option>
-          <option value="3">Quarta-feira</option>
-          <option value="4">Quinta-feira</option>
-          <option value="5">Sexta-feira</option>
-          <option value="6">Sábado</option>
-          <option value="0">Domingo</option>
-        </select>
-        <div id="hora-pico-wrap" style="display:none"></div>
-      </div>
     </div>
     <div class="kg" id="kpi-grid"></div>
     <div class="st">Tempo médio por setor</div>
     <div id="bars-setor" style="margin-bottom:28px"></div>
-    <div class="st">Faturamento por dia da semana</div>
-    <div id="heatmap-dow" style="margin-bottom:28px"></div>
+    <div style="display:flex;gap:24px;margin-bottom:28px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:340px">
+        <div class="st">Faturamento por dia da semana</div>
+        <div id="heatmap-dow" class="hm-scroll-outer"></div>
+      </div>
+      <div style="flex:0 0 auto">
+        <div class="st">Hora de pico por dia</div>
+        <div id="heatmap-hora"></div>
+      </div>
+    </div>
     <div class="st">Ranking — dias que mais emitem notas</div>
     <div id="ranking-dow" style="margin-bottom:28px"></div>
     <div class="st">Registro dos pedidos</div>
-    <table class="rkt">
-      <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th></tr></thead>
-      <tbody id="pedidos-dia-body"></tbody>
-      <tfoot id="pedidos-dia-tfoot"></tfoot>
-    </table>
+    <div class="rkt-scroll-wrap">
+      <table class="rkt">
+        <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th></tr></thead>
+        <tbody id="pedidos-dia-body"></tbody>
+        <tfoot id="pedidos-dia-tfoot"></tfoot>
+      </table>
+    </div>
   </main>
 </div>
 <div class="screen" id="screen-usuarios">
@@ -2079,19 +2095,12 @@ function renderRelatorios(){
   var maxS=Math.max.apply(null,SETORES.map(function(s){return sC[s]?(sA[s]/sC[s]):0;}))||1;
   el('bars-setor').innerHTML=SETORES.map(function(s){
     var a=sC[s]?Math.round(sA[s]/sC[s]):0;
-    return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'</div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(sC[s]||0)+')</span></span></div>';
+    return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(sC[s]||0)+')</span></span></div>';
   }).join('');
 
   if(el('heatmap-dow'))el('heatmap-dow').innerHTML=renderHeatmapDoW(doneForHeat,_filtroDoW);
+  if(el('heatmap-hora'))el('heatmap-hora').innerHTML=renderHoraPicoHeatmap(doneForHeat,_filtroDoW);
   if(el('ranking-dow'))el('ranking-dow').innerHTML=renderRankingDoW(doneForHeat,_filtroDoW);
-  if(el('hora-pico-wrap')){
-    if(_filtroDoW!==''){
-      el('hora-pico-wrap').style.display='';
-      el('hora-pico-wrap').innerHTML=renderHoraPico(doneForHeat,parseInt(_filtroDoW));
-    }else{
-      el('hora-pico-wrap').style.display='none';
-    }
-  }
 
   REPORT_PEDIDOS_EXPORT=all.slice();
 
@@ -2211,6 +2220,45 @@ function renderRankingDoW(done,selDow){
     html+='</tr>';
   });
   html+='</tbody></table>';
+  return html;
+}
+
+function renderHoraPicoHeatmap(done,selDow){
+  if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var HOURS=[8,9,10,11,12,13,14,15,16,17,18];
+  var matrix={};
+  HOURS.forEach(function(h){matrix[h]={};});
+  done.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var d=new Date(o.finalizado_at);
+    var h=d.getHours(),dow=d.getDay();
+    if(h<8||h>18)return;
+    if(!matrix[h])matrix[h]={};
+    matrix[h][dow]=(matrix[h][dow]||0)+1;
+  });
+  var maxCount=0;
+  HOURS.forEach(function(h){DOW_ORDER.forEach(function(d){maxCount=Math.max(maxCount,matrix[h][d]||0);});});
+  var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
+  var html='<div class="hm-wrap"><table class="hm-tbl"><thead><tr><th class="hm-hour-lbl">HR</th>';
+  DOW_ORDER.forEach(function(d){
+    var isSel=d===selDowInt;
+    html+='<th class="hm-head-col" style="'+(isSel?'color:var(--accent)':'')+'">'+DOW_LABELS[d]+'</th>';
+  });
+  html+='</tr></thead><tbody>';
+  HOURS.forEach(function(h){
+    html+='<tr><td class="hm-hour-lbl">'+String(h).padStart(2,'0')+'h</td>';
+    DOW_ORDER.forEach(function(d){
+      var cnt=matrix[h][d]||0;
+      var isSel=d===selDowInt;
+      var intensity=maxCount>0?cnt/maxCount:0;
+      var bg=cnt===0?'var(--bg4)':heatColor(intensity);
+      var textCol=intensity>0.45?'#fff':(cnt>0?'rgba(255,255,255,0.75)':'var(--muted2)');
+      var selClass=isSel?' hm-selected':'';
+      html+='<td class="hm-cell'+selClass+'" style="background:'+bg+';color:'+textCol+'">'+( cnt||'')+'</td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
   return html;
 }
 
