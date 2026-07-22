@@ -266,7 +266,6 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <button class="tab" onclick="go('senha')">Minha Senha</button>
     <button class="tab adm-only" onclick="go('config')" style="display:none">Configurações</button>
     <button class="tab" onclick="go('agretira')" id="tab-agretira">Ag. Retira <span id="agretira-badge" style="display:none;background:rgba(226,75,74,.2);color:var(--danger);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">0</span></button>
-    <button class="tab" onclick="go('ocorrencias')" id="tab-ocorrencias">Ocorrências <span id="ocorrencias-badge" style="display:none;background:rgba(239,159,39,.2);color:var(--warn);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">0</span></button>
     <button class="tab" onclick="go('pendencias')" id="tab-pendencias">Pendências <span id="pendencias-badge" style="display:none;background:rgba(239,68,68,.2);color:var(--danger);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">0</span></button>
   </div>
   <div class="nav-right">
@@ -456,21 +455,6 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
 </div>
 
 
-<div class="screen" id="screen-ocorrencias">
-  <main>
-    <div class="ph">
-      <span class="pt">Ocorrências</span>
-      <span style="color:var(--muted);font-size:12px" id="occ-count"></span>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-      <table class="utbl" id="occ-table">
-        <thead><tr><th style="width:30px"></th><th>Pedido</th><th>Cliente</th><th>Nota Fiscal</th><th>Entrada</th><th>Tempo Restante</th><th>Ações</th></tr></thead>
-        <tbody id="occ-tbody"></tbody>
-      </table>
-    </div>
-    <div id="occ-empty" style="color:var(--muted);font-size:13px;text-align:center;padding:40px 0;display:none">Nenhuma ocorrência no momento.</div>
-  </main>
-</div>
 <div class="screen" id="screen-pendencias">
   <main>
     <div class="ph">
@@ -633,7 +617,7 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const SETORES = ['atendimento','estoque','corte','separacao','faturamento'];
 const PROXIMO_SETOR = {atendimento:'estoque',estoque:'corte',corte:'separacao',separacao:'faturamento'};
 const RETORNO_PADRAO = {estoque:'atendimento',corte:'estoque',separacao:'corte',faturamento:'separacao'};
-const SL = {atendimento:'Atendimento',estoque:'Estoque',corte:'Corte',separacao:'Separação',faturamento:'Faturamento',finalizado:'Finalizado',cancelado:'Excluído',ag_retira:'Ag. Retira',em_ocorrencia:'Ocorrência'};
+const SL = {atendimento:'Atendimento',estoque:'Estoque',corte:'Corte',separacao:'Separação',faturamento:'Faturamento',finalizado:'Finalizado',cancelado:'Excluído',ag_retira:'Ag. Retira'};
 const SC = {atendimento:'tag-at',estoque:'tag-es',corte:'tag-co',separacao:'tag-se',faturamento:'tag-fa',pronto_balcao:'tag-rd',balcao_chamado:'tag-rd',finalizado:'tag-do'};
 const SD = {atendimento:'#5DCAA5',estoque:'#7AD3C2',corte:'#85B7EB',separacao:'#FAC775',faturamento:'#ED93B1'};
 const SICONCOLOR = {atendimento:'#a78bfa',estoque:'#c49a6c',corte:'#ef4444',separacao:'#f1f5f9',faturamento:'#22d3a7'};
@@ -1220,7 +1204,7 @@ async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
   var res=await sb.from('pedidos')
     .select('*')
-    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
+    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira')
     .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
 }
@@ -1231,13 +1215,23 @@ async function fetchMovs(){
 }
 async function fetchPedidosRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
-  var res=await sb.from('pedidos')
-    .select('*')
-    .gte('entrada_at',r.startIso)
-    .lte('entrada_at',r.endIso)
-    .order('entrada_at',{ascending:false});
-  PEDIDOS=res.data||[];
-  PEDIDOS_REL=res.data||[];
+  var all=[];
+  var from=0;
+  var pageSize=1000;
+  while(true){
+    var res=await sb.from('pedidos')
+      .select('*')
+      .gte('entrada_at',r.startIso)
+      .lte('entrada_at',r.endIso)
+      .order('entrada_at',{ascending:false})
+      .range(from,from+pageSize-1);
+    var batch=res.data||[];
+    all=all.concat(batch);
+    if(batch.length<pageSize)break;
+    from+=pageSize;
+  }
+  PEDIDOS=all;
+  PEDIDOS_REL=all;
 }
 async function fetchMovsRelatorio(startStr,endStr){
   var r=getPeriodRange(startStr,endStr);
@@ -1322,7 +1316,6 @@ async function go(name){
   if(name==='usuarios'){ov(true);var u=await fetchUsuarios();ov(false);renderUsers(u);}
   if(name==='config'){setTimeout(carregarVozes,100);}
   if(name==='agretira'){ov(true);await fetchPedidosSeNecessario();ov(false);renderAgRetira();}
-  if(name==='ocorrencias'){ov(true);await fetchPedidosSeNecessario();ov(false);renderOcorrencias();}
   if(name==='pendencias'){ov(true);await fetchPedidosSeNecessario();ov(false);renderPendencias();}
 }
 
@@ -1340,8 +1333,6 @@ function startClock(){
 
     // Check Ag. Retira 15-day alerts
     checkAgRetiraAlerts();
-    checkOcorrencias48h();
-    renderOcorrenciasBadge();
     renderPendenciasBadge();
 
     // Alertas de 10min (raro, não causa render)
@@ -1354,10 +1345,10 @@ function startClock(){
   },1000);
 }
 function isOperacionalVisivel(o){
-  return o.status!=='finalizado' && o.status!=='cancelado' && o.status!=='balcao_chamado' && o.status!=='ag_retira' && o.status!=='em_ocorrencia';
+  return o.status!=='finalizado' && o.status!=='cancelado' && o.status!=='balcao_chamado' && o.status!=='ag_retira';
 }
 function isTVVisivel(o){
-  if(o.status==='cancelado' || o.status==='finalizado' || o.status==='balcao_chamado' || o.status==='ag_retira' || o.status==='em_ocorrencia')return false;
+  if(o.status==='cancelado' || o.status==='finalizado' || o.status==='balcao_chamado' || o.status==='ag_retira')return false;
   if((o.prioridade||'retira')!=='balcao')return false;
   return true;
 }
@@ -1616,9 +1607,6 @@ async function confirmarNota(){
       finalizado_at:agora,
       num_nota:nota,
       valor_nota_fat:valorNota,
-      tem_pendencia:temPendencia,
-      saldo_pendencia:temPendencia?saldo:0,
-      pendencia_status:temPendencia?'aberta':''
     }).eq('id',_notaTarget);
     if(res.error)throw res.error;
     upsertPedidoLocal({id:_notaTarget,setor:'separacao',status:'pronto_balcao',setor_pendente:'',pendente_desde:null,setor_entrada_at:agora,finalizado_at:agora,num_nota:nota,valor_nota_fat:valorNota,tem_pendencia:temPendencia,saldo_pendencia:temPendencia?saldo:0,pendencia_status:temPendencia?'aberta':''});
@@ -2195,7 +2183,7 @@ async function iniciarTVPublica(){
       var hoje=new Date();hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos')
         .select('*')
-        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira,status.eq.em_ocorrencia')
+        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira')
         .order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       var snap = buildSnapshot(_tvPub);
@@ -2208,7 +2196,7 @@ async function iniciarTVPublica(){
   }
 
   await carregarTVPublica();
-  setInterval(carregarTVPublica, 5000);
+  setInterval(carregarTVPublica, 30000);
 }
 
 // ── MUDANÇA: renderTVPub reutiliza buildTVRows ──
@@ -2363,70 +2351,7 @@ async function agRetiraRetornarOperacao(id) {
 }
 
 // ── Enviar para aba Ocorrências ──
-async function enviarParaOcorrencias(id) {
-  ov(true);
-  try {
-    var pedido = getPedidoById(id);
-    if (!pedido) throw new Error('Pedido não encontrado.');
-    var agora = new Date().toISOString();
-    var res = await sb.from('pedidos').update({
-      status: 'em_ocorrencia',
-      pendente_desde: agora
-    }).eq('id', id);
-    if (res.error) throw res.error;
-    upsertPedidoLocal({id: id, status: 'em_ocorrencia', pendente_desde: agora});
-    var linha = buildOccurrenceLine('OCORRÊNCIA', 'Ag. Retira', 'Pedido enviado para ocorrências após prazo expirado.');
-    await appendObsPedido(id, linha);
-    // Dismiss alert for this order
-    _agrAlertDismissed[id] = true;
-    _lastPainelSnap = '';
-    atualizarTelasAtivas();
-    refreshPedidosSoon(500);
-    await logOcorrencia(id, pedido.numero, pedido.nome_cliente, pedido.num_nota, 'PRAZO_EXPIRADO', 'Pedido enviado para ocorrências após prazo expirado.');
-    toast('Pedido #' + pedido.numero + ' enviado para Ocorrências.', 'warn');
-  } catch(e) { toast(e.message, 'err'); }
-  finally { ov(false); }
-}
 
-// ── Retornar de Ocorrências para Ag. Retira ──
-async function occRetornarAgRetira(id) {
-  if(!isAdmin()){toast('Apenas administradores podem executar esta ação.','warn');return;}
-  ov(true);
-  try {
-    var pedido = getPedidoById(id);
-    if (!pedido) throw new Error('Pedido não encontrado.');
-    var agora = new Date().toISOString();
-    var res = await sb.from('pedidos').update({
-      status: 'ag_retira',
-      pendente_desde: agora
-    }).eq('id', id);
-    if (res.error) throw res.error;
-    upsertPedidoLocal({id: id, status: 'ag_retira', pendente_desde: agora});
-    var linha = buildOccurrenceLine('RETORNO', 'Ocorrências', 'Pedido retornado para Ag. Retira.');
-    await appendObsPedido(id, linha);
-    _lastPainelSnap = '';
-    atualizarTelasAtivas();
-    refreshPedidosSoon(500);
-    await logOcorrencia(id, pedido.numero, pedido.nome_cliente, pedido.num_nota, 'RETORNO', 'Pedido retornado para Ag. Retira.');
-    toast('Pedido #' + pedido.numero + ' retornado para Ag. Retira.', 'ok');
-  } catch(e) { toast(e.message, 'err'); }
-  finally { ov(false); }
-}
-
-// ── Cancelar em Ocorrências ──
-async function occCancelar(id) {
-  if(!isAdmin()){toast('Apenas administradores podem executar esta ação.','warn');return;}
-  var pedido = getPedidoById(id);
-  _occCtx = {modo: 'exclusao', id: id, setorLabel: 'Ocorrências'};
-  el('occ-title').textContent = 'Cancelar pedido em Ocorrências';
-  el('occ-desc').textContent = 'Informe o motivo do cancelamento.';
-  el('occ-text').value = '';
-  openM('m-ocorrencia');
-}
-
-// ── Render Ag. Retira ──
-
-// ── Pendências de Saldo ──
 function renderPendenciasBadge() {
   var items = PEDIDOS.filter(function(o) { return o.tem_pendencia && o.pendencia_status === 'aberta'; });
   var badge = el('pendencias-badge');
@@ -2522,23 +2447,6 @@ async function pendenciaEncerrar(id) {
   finally { ov(false); }
 }
 
-// ── Log ocorrência no Supabase ──
-async function logOcorrencia(pedido_id, numero, nome_cliente, num_nota, tipo, descricao) {
-  try {
-    await sb.from('ocorrencias').insert({
-      pedido_id: pedido_id,
-      numero: numero,
-      nome_cliente: nome_cliente || '',
-      num_nota: num_nota || '',
-      tipo: tipo,
-      descricao: descricao,
-      usuario: ME ? ME.login : '',
-      created_at: new Date().toISOString()
-    });
-  } catch(e) { console.warn('Erro ao registrar ocorrência:', e); }
-}
-
-
 // ── Inserir Ag. Retira manual (notas antigas) ──
 async function inserirAgRetiraManual() {
   var num = normalizarNumero((el('agr-m-num').value || '').trim());
@@ -2623,7 +2531,6 @@ function renderAgRetira() {
     var expired = diasMs >= AGR_15_DAYS_MS;
     var dataEntrada = o.pendente_desde ? new Date(o.pendente_desde).toLocaleDateString('pt-BR') : '—';
     var dotClass = dias >= 15 ? 'dot-red' : dias >= 10 ? 'dot-yellow' : 'dot-green';
-    var btnOcc = expired ? '<button class="boc" onclick="enviarParaOcorrencias(\'' + o.id + '\')">Ocorrências</button>' : '';
     var btnParcial = o.parcial ? '<button class="bmv" style="background:#f59e0b" onclick="agRetiraRetornarOperacao(\'' + o.id + '\')">↩ Retornar Operação</button>' : '';
     var valorNF = parseFloat(o.valor_nota_fat) || 0;
 
@@ -2639,7 +2546,6 @@ function renderAgRetira() {
       '<td><div class="act-btns">' +
         '<button class="bcall" onclick="agRetiraChamarBalcao(\'' + o.id + '\')" style="animation:none">Chamar balcão</button>' +
         btnParcial +
-        btnOcc +
         '<button class="bexc" onclick="agRetiraCancelar(\'' + o.id + '\')">Cancelar</button>' +
       '</div></td>' +
     '</tr>';
@@ -2674,74 +2580,6 @@ function exportarAgRetiraExcel() {
   document.body.appendChild(a); a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},100);
   toast('Exportado com sucesso!','ok');
-}
-
-// ── Render Ocorrências ──
-function renderOcorrencias() {
-  var items = PEDIDOS.filter(function(o) { return o.status === 'em_ocorrencia'; });
-  renderOcorrenciasBadge();
-  if (el('occ-count')) el('occ-count').textContent = items.length + ' pedido(s)';
-  if (el('occ-empty')) el('occ-empty').style.display = items.length ? 'none' : 'block';
-  if (!el('occ-tbody')) return;
-  if(el('occ-table'))el('occ-table').style.display=items.length?'':'none';
-  var adm = isAdmin();
-
-  el('occ-tbody').innerHTML = items.map(function(o) {
-    var entrou = tsMs(o.pendente_desde);
-    var tempoMs = now() - entrou;
-    var restanteMs = Math.max(0, OCC_48H_MS - tempoMs);
-    var restanteH = Math.floor(restanteMs / (60*60*1000));
-    var restanteM = Math.floor((restanteMs % (60*60*1000)) / (60*1000));
-    var quaseExpirando = restanteMs < 6*60*60*1000;
-    var dataEntrada = o.pendente_desde ? new Date(o.pendente_desde).toLocaleString('pt-BR') : '—';
-    var dotClass = quaseExpirando ? 'dot-red' : 'dot-yellow';
-
-    var acoes = adm
-      ? '<div class="act-btns">' +
-          '<button class="bmv" style="border-color:rgba(245,158,11,.4);color:var(--warn)" onclick="occRetornarAgRetira(\'' + o.id + '\')">Retornar</button>' +
-          '<button class="bexc" onclick="occCancelar(\'' + o.id + '\')">Cancelar</button>' +
-        '</div>'
-      : '<span style="font-size:10px;color:var(--muted)">Somente admin</span>';
-
-    return '<tr>' +
-      '<td><span class="dot-status ' + dotClass + '"></span></td>' +
-      '<td style="font-family:var(--font-head);font-size:15px;font-weight:700">#' + o.numero + '</td>' +
-      '<td>' + (o.nome_cliente || '—') + '</td>' +
-      '<td style="color:var(--sep)">' + (o.num_nota || '—') + '</td>' +
-      '<td style="color:var(--muted)">' + dataEntrada + '</td>' +
-      '<td><span style="font-weight:600;color:' + (quaseExpirando?'var(--danger)':'var(--warn)') + '">' + restanteH + 'h ' + restanteM + 'm</span></td>' +
-      '<td>' + acoes + '</td>' +
-    '</tr>';
-  }).join('');
-}
-
-function renderOcorrenciasBadge() {
-  var items = PEDIDOS.filter(function(o) { return o.status === 'em_ocorrencia'; });
-  var badge = el('ocorrencias-badge');
-  if (badge) {
-    if (items.length > 0) {
-      badge.textContent = items.length;
-      badge.style.display = 'inline';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
-}
-
-// ── Auto-cancel ocorrências after 48h ──
-function checkOcorrencias48h() {
-  PEDIDOS.forEach(function(o) {
-    if (o.status !== 'em_ocorrencia') return;
-    if (!o.pendente_desde) return;
-    var tempoMs = now() - tsMs(o.pendente_desde);
-    if (tempoMs >= OCC_48H_MS) {
-      var k = 'occ48_' + o.id;
-      if (!sessionStorage.getItem(k)) {
-        sessionStorage.setItem(k, '1');
-        toast('Pedido #' + o.numero + ' excedeu 48h em Ocorrências!', 'err', 8000);
-      }
-    }
-  });
 }
 
 // ── Alertas Ag. Retira (15 dias) - msg piscante com NF ──
