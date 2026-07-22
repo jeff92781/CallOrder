@@ -41,8 +41,12 @@
 .hm-scroll-outer{max-height:336px;overflow-y:auto;overflow-x:auto;padding-bottom:4px}
 .rkt-scroll-wrap{max-height:942px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:28px}
 .rkt thead th{position:sticky;top:0;background:var(--bg2);z-index:2;border-bottom:1px solid var(--border)}
-.rkt tfoot td{position:sticky;bottom:0;z-index:2}
+.rkt tfoot td{background:var(--bg2);z-index:1}
 .hm-hour-lbl{font-size:11px;color:var(--muted);padding-right:10px;white-space:nowrap;font-family:var(--font-mono);vertical-align:middle;text-align:right;font-weight:600}
+.hm-compact .hm-cell{width:32px;height:28px;font-size:10px}
+.hm-compact .hm-tbl{min-width:0}
+.hm-compact .hm-head-col{min-width:32px;padding:0 1px 7px;font-size:9px}
+.hm-compact .hm-hour-lbl{font-size:9px;padding-right:6px}
 .hm-wrap{overflow-x:auto;padding-bottom:8px}
 .hm-tbl{border-collapse:separate;border-spacing:5px;min-width:480px}
 .hm-head-col{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:0 4px 10px;text-align:center;min-width:52px}
@@ -385,7 +389,6 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
             <option value="4">Quinta</option>
             <option value="5">Sexta</option>
             <option value="6">Sábado</option>
-            <option value="0">Domingo</option>
           </select>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-shrink:0">
@@ -414,20 +417,24 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div class="kg" id="kpi-grid"></div>
     <div class="st">Tempo médio por setor</div>
     <div id="bars-setor" style="margin-bottom:28px"></div>
-    <div style="display:flex;gap:24px;margin-bottom:28px;align-items:flex-start;flex-wrap:wrap">
-      <div style="flex:1;min-width:340px">
+    <div style="display:flex;gap:14px;margin-bottom:28px;align-items:stretch;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column">
         <div class="st">Faturamento por dia da semana</div>
-        <div id="heatmap-dow" class="hm-scroll-outer"></div>
+        <div id="heatmap-dow" class="hm-scroll-outer" style="flex:1"></div>
       </div>
-      <div style="flex:0 0 auto">
+      <div style="flex:0 0 auto;display:flex;flex-direction:column">
         <div class="st">Hora de pico por dia</div>
-        <div id="heatmap-hora"></div>
+        <div id="heatmap-hora" class="hm-compact"></div>
+      </div>
+      <div style="flex:0 0 210px;display:flex;flex-direction:column">
+        <div class="st">Ranking — dias que mais emitem notas</div>
+        <div id="ranking-dow" style="flex:1;overflow-y:auto"></div>
       </div>
     </div>
     <div class="st">Insights do período</div>
     <div id="insights-heatmap" style="margin-bottom:28px"></div>
-    <div class="st">Ranking — dias que mais emitem notas</div>
-    <div id="ranking-dow" style="margin-bottom:28px"></div>
+    <div class="st">Variação diária — Pedidos &amp; Faturamento</div>
+    <div id="daily-chart" style="margin-bottom:28px"></div>
     <div class="st">Registro dos pedidos</div>
     <div class="rkt-scroll-wrap">
       <table class="rkt">
@@ -2072,7 +2079,7 @@ function renderRelatorios(){
   if(REPORT_DATE_START&&REPORT_DATE_END){
     var _d1=new Date(REPORT_DATE_START+'T00:00:00'),_d2=new Date(REPORT_DATE_END+'T00:00:00');
     var _cur=new Date(_d1),_uteis=0;
-    while(_cur<=_d2){var _dow=_cur.getDay();if(_dow!==0&&_dow!==6)_uteis++;_cur.setDate(_cur.getDate()+1);}
+    while(_cur<=_d2){var _dow=_cur.getDay();if(_dow!==0)_uteis++;_cur.setDate(_cur.getDate()+1);}
     numDias=Math.max(1,_uteis);
   }
   var mediaDia=all.length>0?String(Math.round(all.length/numDias)):'—';
@@ -2103,7 +2110,8 @@ function renderRelatorios(){
   if(el('heatmap-dow'))el('heatmap-dow').innerHTML=renderHeatmapDoW(doneForHeat,_filtroDoW);
   if(el('heatmap-hora'))el('heatmap-hora').innerHTML=renderHoraPicoHeatmap(doneForHeat,_filtroDoW);
   if(el('ranking-dow'))el('ranking-dow').innerHTML=renderRankingDoW(doneForHeat,_filtroDoW);
-  if(el('insights-heatmap'))el('insights-heatmap').innerHTML=renderInsightsHeatmap(doneForHeat,_filtroDoW);
+  if(el('insights-heatmap'))el('insights-heatmap').innerHTML=renderInsightsHeatmap(doneForHeat,_filtroDoW,numDias);
+  if(el('daily-chart'))el('daily-chart').innerHTML=renderDailyChart(doneForHeat,_filtroDoW);
 
   REPORT_PEDIDOS_EXPORT=all.slice();
 
@@ -2128,7 +2136,7 @@ function renderRelatorios(){
 // ── HEATMAP + RANKING DIA DA SEMANA ──
 var DOW_LABELS=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 var DOW_FULL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-var DOW_ORDER=[1,2,3,4,5,6,0];
+var DOW_ORDER=[1,2,3,4,5,6];
 
 function heatColor(intensity){
   var r=Math.round(96+(29-96)*intensity);
@@ -2265,14 +2273,12 @@ function renderHoraPicoHeatmap(done,selDow){
   return html;
 }
 
-function renderInsightsHeatmap(done,selDow){
+function renderInsightsHeatmap(done,selDow,numDias){
   if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
   var HOURS=[8,9,10,11,12,13,14,15,16,17,18];
   var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
   var filtered=selDowInt>=0?done.filter(function(o){return !!o.finalizado_at&&new Date(o.finalizado_at).getDay()===selDowInt;}):done;
   if(!filtered.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados para o filtro selecionado.</div>';
-
-  /* hour counts */
   var hourCounts={};
   HOURS.forEach(function(h){hourCounts[h]=0;});
   filtered.forEach(function(o){
@@ -2280,77 +2286,41 @@ function renderInsightsHeatmap(done,selDow){
     var h=new Date(o.finalizado_at).getHours();
     if(h>=8&&h<=18)hourCounts[h]=(hourCounts[h]||0)+1;
   });
-
   var sortedH=HOURS.slice().sort(function(a,b){return hourCounts[b]-hourCounts[a];});
-  var peakH=sortedH[0], peakCnt=hourCounts[peakH]||0;
-  var quietH=sortedH[sortedH.length-1], quietCnt=hourCounts[quietH]||0;
+  var peakH=sortedH[0],peakCnt=hourCounts[peakH]||0;
+  var quietH=sortedH[sortedH.length-1];
   var idleHours=HOURS.filter(function(h){return hourCounts[h]===0;});
-
-  /* unique days */
-  var uniqueDays={};
-  filtered.forEach(function(o){if(o.finalizado_at)uniqueDays[o.finalizado_at.slice(0,10)]=true;});
-  var nDays=Math.max(1,Object.keys(uniqueDays).length);
-
+  var nDays;
+  if(selDowInt>=0){
+    var uDays={};
+    filtered.forEach(function(o){if(o.finalizado_at)uDays[o.finalizado_at.slice(0,10)]=true;});
+    nDays=Math.max(1,Object.keys(uDays).length);
+  }else{
+    nDays=Math.max(1,numDias||1);
+  }
   var totalOrders=filtered.length;
   var avgOrders=(totalOrders/nDays).toFixed(1);
   var totalValue=filtered.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);
   var avgValue=totalValue/nDays;
-
-  /* idle label */
   var idleVal,idleSub;
   if(idleHours.length){
     idleVal=idleHours.length+' hora'+(idleHours.length>1?'s':'');
     idleSub='sem pedidos: '+idleHours.map(function(h){return String(h).padStart(2,'0')+'h';}).join(', ');
   }else{
     idleVal=String(quietH).padStart(2,'0')+'h';
-    idleSub='hora mais calma — '+quietCnt+' pedidos';
+    idleSub='hora mais calma — '+hourCounts[quietH]+' pedidos';
   }
-
-  /* determine if peak hours form a contiguous block for secondary insight */
-  var avgPeakBlock=sortedH.slice(0,3);
-  var blockLabel=avgPeakBlock.map(function(h){return String(h).padStart(2,'0')+'h';}).join(', ');
-
+  var blockLabel=sortedH.slice(0,3).map(function(h){return String(h).padStart(2,'0')+'h';}).join(', ');
   var cards=[
-    {
-      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-      label:'Hora de pico',
-      value:String(peakH).padStart(2,'0')+'h',
-      sub:peakCnt+' pedidos nesse horário',
-      extra:'Top 3: '+blockLabel,
-      color:'#f59e0b',dim:'rgba(245,158,11,0.08)',border:'rgba(245,158,11,0.25)'
-    },
-    {
-      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-      label:'Ociosidade',
-      value:idleVal,
-      sub:idleSub,
-      extra:'',
-      color:'var(--muted)',dim:'var(--bg3)',border:'var(--border2)'
-    },
-    {
-      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
-      label:'Média de pedidos / dia',
-      value:String(avgOrders).replace('.',','),
-      sub:totalOrders+' pedidos em '+nDays+' dia'+(nDays>1?'s':''),
-      extra:'',
-      color:'var(--cyan)',dim:'rgba(6,182,212,0.08)',border:'rgba(6,182,212,0.25)'
-    },
-    {
-      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-      label:'Faturamento médio / dia',
-      value:avgValue>0?fmtBRL(avgValue):'—',
-      sub:totalValue>0?'total: '+fmtBRL(totalValue):'sem faturamento registrado',
-      extra:'',
-      color:'var(--accent)',dim:'rgba(34,211,167,0.08)',border:'rgba(34,211,167,0.25)'
-    }
+    {icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',label:'Hora de pico',value:String(peakH).padStart(2,'0')+'h',sub:peakCnt+' pedidos nesse horário',extra:'Top 3: '+blockLabel,color:'#f59e0b',dim:'rgba(245,158,11,0.08)',border:'rgba(245,158,11,0.25)'},
+    {icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',label:'Ociosidade',value:idleVal,sub:idleSub,extra:'',color:'var(--muted)',dim:'var(--bg3)',border:'var(--border2)'},
+    {icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',label:'Média de pedidos / dia',value:String(avgOrders).replace('.',','),sub:totalOrders+' pedidos em '+nDays+' dia'+(nDays>1?'s':''),extra:'',color:'var(--cyan)',dim:'rgba(6,182,212,0.08)',border:'rgba(6,182,212,0.25)'},
+    {icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',label:'Faturamento médio / dia',value:avgValue>0?fmtBRL(avgValue):'—',sub:totalValue>0?'total: '+fmtBRL(totalValue):'sem faturamento registrado',extra:'',color:'var(--accent)',dim:'rgba(34,211,167,0.08)',border:'rgba(34,211,167,0.25)'}
   ];
-
-  var labelCtx=selDowInt>=0?DOW_FULL[selDowInt]:'período selecionado';
   var html='<div style="display:flex;gap:14px;flex-wrap:wrap">';
   cards.forEach(function(cd){
     html+='<div style="flex:1;min-width:190px;background:'+cd.dim+';border:1px solid '+cd.border+';border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;gap:4px">';
-    html+='<div style="display:flex;align-items:center;gap:7px;color:'+cd.color+';font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:2px">';
-    html+=cd.icon+' '+cd.label+'</div>';
+    html+='<div style="display:flex;align-items:center;gap:7px;color:'+cd.color+';font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:2px">'+cd.icon+' '+cd.label+'</div>';
     html+='<div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text);line-height:1">'+cd.value+'</div>';
     if(cd.sub)html+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+cd.sub+'</div>';
     if(cd.extra)html+='<div style="font-size:11px;color:'+cd.color+';opacity:.7;margin-top:1px">'+cd.extra+'</div>';
@@ -2358,6 +2328,66 @@ function renderInsightsHeatmap(done,selDow){
   });
   html+='</div>';
   return html;
+}
+function renderDailyChart(done,selDow){
+  if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
+  var byDate={};
+  done.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var d=new Date(o.finalizado_at);
+    var dow=d.getDay();
+    if(dow===0)return;
+    if(selDowInt>=0&&dow!==selDowInt)return;
+    var dt=o.finalizado_at.slice(0,10);
+    if(!byDate[dt])byDate[dt]={orders:0,value:0};
+    byDate[dt].orders++;
+    byDate[dt].value+=(parseFloat(o.valor_nota_fat)||0);
+  });
+  var dates=Object.keys(byDate).sort();
+  if(!dates.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados para o filtro selecionado.</div>';
+  var maxOrders=Math.max.apply(null,dates.map(function(d){return byDate[d].orders;}));
+  var maxValue=Math.max.apply(null,dates.map(function(d){return byDate[d].value;}));
+  var W=900,H=230,pL=52,pR=80,pT=24,pB=48;
+  var cW=W-pL-pR,cH=H-pT-pB,n=dates.length;
+  var barW=Math.max(3,Math.min(18,Math.floor(cW/n*0.55)));
+  function xPos(i){return pL+(n===1?cW/2:i*(cW/(n-1)));}
+  function yV(v){return pT+cH-(maxValue>0?v/maxValue*cH:0);}
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:230px;display:block">';
+  for(var g=1;g<=4;g++){
+    var gy=pT+cH-cH*g/4;
+    svg+='<line x1="'+pL+'" y1="'+gy+'" x2="'+(pL+cW)+'" y2="'+gy+'" stroke="rgba(99,179,237,0.07)" stroke-width="1"/>';
+    svg+='<text x="'+(pL-5)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" font-family="monospace" fill="rgba(59,130,246,0.7)">'+Math.round(maxOrders*g/4)+'</text>';
+    var vv=maxValue*g/4;
+    var vl=vv>=1000000?'R$'+(vv/1000000).toFixed(1)+'M':vv>=1000?'R$'+Math.round(vv/1000)+'k':'R$'+Math.round(vv);
+    svg+='<text x="'+(pL+cW+5)+'" y="'+(gy+4)+'" text-anchor="start" font-size="9" font-family="monospace" fill="rgba(34,211,167,0.8)">'+vl+'</text>';
+  }
+  dates.forEach(function(dt,i){
+    var x=xPos(i),cnt=byDate[dt].orders;
+    var bh=maxOrders>0?cnt/maxOrders*cH:0;
+    svg+='<rect x="'+(x-barW/2)+'" y="'+(pT+cH-bh)+'" width="'+barW+'" height="'+bh+'" fill="#3b82f6" opacity="0.65" rx="2"/>';
+  });
+  var pts=dates.map(function(dt,i){return xPos(i)+','+yV(byDate[dt].value);}).join(' ');
+  svg+='<polyline points="'+pts+'" fill="none" stroke="#22d3a7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  dates.forEach(function(dt,i){
+    svg+='<circle cx="'+xPos(i)+'" cy="'+yV(byDate[dt].value)+'" r="3" fill="#22d3a7"/>';
+  });
+  var every=Math.max(1,Math.ceil(n/28));
+  dates.forEach(function(dt,i){
+    if(i%every!==0&&i!==n-1)return;
+    var p=dt.split('-'),lbl=p[2]+'/'+p[1];
+    var tx=xPos(i),ty=pT+cH+14;
+    svg+='<text x="'+tx+'" y="'+ty+'" text-anchor="end" font-size="9" font-family="monospace" fill="rgba(232,237,245,0.4)" transform="rotate(-40 '+tx+' '+ty+')">'+lbl+'</text>';
+  });
+  svg+='<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>';
+  svg+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="rgba(99,179,237,0.12)" stroke-width="1"/>';
+  svg+='<line x1="'+(pL+cW)+'" y1="'+pT+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="rgba(34,211,167,0.2)" stroke-width="1"/>';
+  svg+='<rect x="'+pL+'" y="'+(pT+4)+'" width="9" height="9" fill="#3b82f6" opacity="0.65" rx="2"/>';
+  svg+='<text x="'+(pL+13)+'" y="'+(pT+12)+'" font-size="10" font-family="monospace" fill="rgba(59,130,246,0.9)">Pedidos (eixo esq.)</text>';
+  svg+='<circle cx="'+(pL+115)+'" cy="'+(pT+8)+'" r="4" fill="#22d3a7"/>';
+  svg+='<text x="'+(pL+123)+'" y="'+(pT+12)+'" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.9)">Faturamento (eixo dir.)</text>';
+  svg+='</svg>';
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px">'+svg+'</div>';
 }
 function renderHoraPico(done,dow){
   var filtered=done.filter(function(o){
