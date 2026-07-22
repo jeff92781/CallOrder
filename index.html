@@ -2380,14 +2380,6 @@ function renderDailyChart(done,selDow){
     if(gran==='diaria'){
       if(BRA_DAYS.indexOf(dt)>=0) return 'url(#'+uid+'br)';
       if(dt>=COPA_S&&dt<=COPA_E)  return 'url(#'+uid+'us)';
-    } else if(gran==='semanal'){
-      var wE=new Date(dt+'T12:00:00'); wE.setDate(wE.getDate()+6);
-      var wEs=wE.toISOString().slice(0,10);
-      if(BRA_DAYS.some(function(d){return d>=dt&&d<=wEs;})) return 'url(#'+uid+'br)';
-      if(dt<=COPA_E&&wEs>=COPA_S) return 'url(#'+uid+'us)';
-    } else {
-      if(BRA_DAYS.some(function(d){return d.slice(0,7)===dt;})) return 'url(#'+uid+'br)';
-      if(dt>=COPA_S.slice(0,7)&&dt<=COPA_E.slice(0,7)) return 'url(#'+uid+'us)';
     }
     return 'url(#'+uid+'b)';
   }
