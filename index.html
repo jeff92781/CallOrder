@@ -34,6 +34,36 @@
   --shadow:0 4px 24px rgba(0,0,0,0.3);--shadow-lg:0 8px 40px rgba(0,0,0,0.4);
   --glow:0 0 20px rgba(34,211,167,0.15);
 }
+
+/* ── Heatmap dia da semana ── */
+.hm-wrap{overflow-x:auto;padding-bottom:8px}
+.hm-tbl{border-collapse:separate;border-spacing:5px;min-width:480px}
+.hm-head-col{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:0 4px 10px;text-align:center;min-width:52px}
+.hm-week-lbl{font-size:11px;color:var(--muted);padding-right:14px;white-space:nowrap;font-family:var(--font-mono);vertical-align:middle}
+.hm-cell{width:52px;height:38px;border-radius:8px;text-align:center;font-size:13px;font-weight:700;cursor:default;transition:opacity .15s;vertical-align:middle;font-family:var(--font-head)}
+.hm-cell:hover{opacity:.8}
+.hm-cell.hm-selected{outline:2px solid var(--accent);outline-offset:2px}
+.hm-legend{display:flex;align-items:center;gap:6px;margin-top:10px}
+.hm-leg-cell{width:26px;height:16px;border-radius:4px}
+/* ── Ranking DoW ── */
+.rk-dow-tbl{width:100%;border-collapse:collapse}
+.rk-dow-tbl thead th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 14px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:600}
+.rk-dow-tbl thead th:not(:first-child){text-align:right}
+.rk-dow-tbl td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.rk-dow-tbl tbody tr:last-child td{border-bottom:none}
+.rk-num{display:inline-flex;width:22px;height:22px;background:var(--bg4);border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:6px;vertical-align:middle;flex-shrink:0}
+.rk-first .rk-num{background:#f59e0b;color:#1a1000}
+.rk-day-name{font-weight:600;font-size:14px;vertical-align:middle}
+.rk-bar-wrap{display:block;width:180px;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:7px}
+.rk-bar{display:block;height:100%;border-radius:4px}
+.rk-count{font-family:var(--font-head);font-size:18px;font-weight:700;text-align:right}
+.rk-avg-td{color:var(--muted);text-align:right;font-size:13px}
+.rk-value{text-align:right;font-weight:600;font-size:13px}
+/* ── Hora de pico ── */
+.hora-pico-kpi{display:inline-flex;flex-direction:column;background:var(--accent-dim);border:1px solid rgba(34,211,167,.35);border-radius:var(--radius);padding:8px 18px;gap:2px}
+.hora-pico-lbl{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.hora-pico-val{font-family:var(--font-head);font-size:18px;font-weight:700}
+.hora-pico-sub{font-size:11px;color:var(--muted)}
 [data-theme="light"]{
   --bg:#eef2f7;--bg2:#ffffff;--bg3:#f1f5f9;--bg4:#e2e8f0;
   --border:rgba(30,64,120,0.1);--border2:rgba(30,64,120,0.18);--border3:rgba(30,64,120,0.25);
@@ -360,12 +390,28 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
         <button id="btn-tipo-balcao" onclick="setFiltroTipo('balcao')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Balcão</button>
         <button id="btn-tipo-retira" onclick="setFiltroTipo('retira')" style="padding:5px 16px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--muted);transition:all .2s">Retira</button>
       </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600">Dia da semana:</span>
+        <select id="filtro-dow" onchange="onFiltroDowChange()" style="padding:5px 14px;border-radius:20px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg4);color:var(--text);outline:none;transition:all .2s">
+          <option value="">Todos os dias</option>
+          <option value="1">Segunda-feira</option>
+          <option value="2">Terça-feira</option>
+          <option value="3">Quarta-feira</option>
+          <option value="4">Quinta-feira</option>
+          <option value="5">Sexta-feira</option>
+          <option value="6">Sábado</option>
+          <option value="0">Domingo</option>
+        </select>
+        <div id="hora-pico-wrap" style="display:none"></div>
+      </div>
     </div>
     <div class="kg" id="kpi-grid"></div>
     <div class="st">Tempo médio por setor</div>
     <div id="bars-setor" style="margin-bottom:28px"></div>
-    <div class="st adm-only" style="display:none">Tempo de confirmação por setor</div>
-    <div id="bars-conf" class="adm-only" style="margin-bottom:28px;display:none"></div>
+    <div class="st">Faturamento por dia da semana</div>
+    <div id="heatmap-dow" style="margin-bottom:28px"></div>
+    <div class="st">Ranking — dias que mais emitem notas</div>
+    <div id="ranking-dow" style="margin-bottom:28px"></div>
     <div class="st">Registro dos pedidos</div>
     <table class="rkt">
       <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th></tr></thead>
@@ -710,7 +756,7 @@ function updateTimersInPlace() {
     var entryAt = parseInt(span.getAttribute('data-timer-entry'));
     var freezeAt = span.getAttribute('data-timer-freeze');
     var fim = freezeAt ? parseInt(freezeAt) : now();
-    var ms = Math.max(0, fim - entryAt);
+    var ms = businessMs(entryAt, fim);
     var txt = fmtT(ms);
     if (span.textContent !== txt) span.textContent = txt;
     // Atualizar classes de alerta
@@ -723,7 +769,7 @@ function updateTimersInPlace() {
     var entryAt = parseInt(span.getAttribute('data-timer-entry-ts'));
     var freezeAt = span.getAttribute('data-timer-freeze-ts');
     var fim = freezeAt ? parseInt(freezeAt) : now();
-    var ms = Math.max(0, fim - entryAt);
+    var ms = businessMs(entryAt, fim);
     var txt = fmtTs(ms);
     if (span.textContent !== txt) span.textContent = txt;
     var tColor = ms > 45*60000 ? 'var(--danger)' : ms > 25*60000 ? 'var(--warn)' : 'var(--text)';
@@ -1459,8 +1505,8 @@ function renderTransCard(o){
 function renderCard(o,setor){
   var t = calcTotalMs(o);
   var s = calcSetorMs(o);
-  var totalMs = Math.max(0, (t.freeze || now()) - t.entry);
-  var setorMs = Math.max(0, (s.freeze || now()) - s.entry);
+  var totalMs = businessMs(t.entry, t.freeze||now());
+  var setorMs = businessMs(s.entry, s.freeze||now());
   var tC=totalMs>45*60000?'danger':totalMs>25*60000?'warn':'';
   var prio=o.prioridade||'retira',pC=prio==='balcao'?'prio-balcao':'';
   var hora=tsMs(o.entrada_at)?new Date(tsMs(o.entrada_at)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'--';
@@ -1856,6 +1902,16 @@ function businessMs(startMs, endMs) {
   return Math.max(0, total);
 }
 
+function removeOutliers(arr) {
+  if (arr.length < 4) return arr.slice().sort(function(a,b){return a-b;});
+  var s = arr.slice().sort(function(a,b){return a-b;});
+  var q1 = s[Math.floor(s.length*0.25)];
+  var q3 = s[Math.floor(s.length*0.75)];
+  var iqr = q3 - q1;
+  if (iqr === 0) return s;
+  return s.filter(function(v){return v>=q1-1.5*iqr && v<=q3+1.5*iqr;});
+}
+
 // ── MUDANÇA 6: renderTV unificado (usado por TV logada e TV pública) ──
 function buildTVRows(pedidos) {
   var active = pedidos.filter(isTVVisivel).filter(function(o){ return (o.prioridade||'retira')==='balcao'; });
@@ -1867,7 +1923,7 @@ function buildTVRows(pedidos) {
 
   var html = active.map(function(o){
     var t = calcTotalMs(o);
-    var totalMs = Math.max(0, (t.freeze||now()) - t.entry);
+    var totalMs = businessMs(t.entry, t.freeze||now());
     var sEntry, sFreeze;
     if (o.status==='aguardando') {
       sEntry = tsMs(o.pendente_desde); sFreeze = null;
@@ -1875,7 +1931,7 @@ function buildTVRows(pedidos) {
       var s = calcSetorMs(o);
       sEntry = s.entry; sFreeze = s.freeze;
     }
-    var setorMs = Math.max(0, (sFreeze||now()) - sEntry);
+    var setorMs = businessMs(sEntry, sFreeze||now());
 
     var rC=totalMs>45*60000?'tv-row-danger':totalMs>25*60000?'tv-row-warn':'';
     var tColor=totalMs>45*60000?'var(--danger)':totalMs>25*60000?'var(--warn)':'var(--text)';
@@ -1909,6 +1965,12 @@ function renderTV(){
 }
 
 
+var _filtroDoW='';
+function onFiltroDowChange(){
+  _filtroDoW=el('filtro-dow').value;
+  renderRelatorios();
+}
+
 var _relFiltroPedido = '';
 var _relFiltroNota = '';
 var _relFiltroTipo = '';
@@ -1918,6 +1980,7 @@ function aplicarTodosFiltros() {
   aplicarFiltroRelatorios();
 }
 function limparTodosFiltros() {
+  _filtroDoW='';if(el('filtro-dow'))el('filtro-dow').value='';
   _relFiltroPedido = '';
   _relFiltroNota   = '';
   _relFiltroTipo   = '';
@@ -1969,11 +2032,20 @@ function renderRelatorios(){
   if(_relFiltroPedido){all=all.filter(function(o){return o.numero && o.numero.indexOf(_relFiltroPedido)>=0;});}
   if(_relFiltroNota){all=all.filter(function(o){return o.num_nota && o.num_nota.indexOf(_relFiltroNota)>=0;});}
   if(_relFiltroTipo){all=all.filter(function(o){return (o.prioridade||'retira')===_relFiltroTipo;});}
+  var allForHeat=all.slice();
+  if(_filtroDoW!==''){
+    all=all.filter(function(o){
+      var d=new Date(o.finalizado_at||o.entrada_at);
+      return d.getDay()===parseInt(_filtroDoW);
+    });
+  }
   var done=all.filter(function(o){return !!o.finalizado_at;});
   var active=all.filter(function(o){return !o.finalizado_at && o.status!=='cancelado';});
+  var doneForHeat=allForHeat.filter(function(o){return !!o.finalizado_at;});
   var times=done.map(function(o){return businessMs(tsMs(o.entrada_at),tsMs(o.finalizado_at));}).filter(function(t){return t>0;});
   var avg=times.length?times.reduce(function(a,b){return a+b;},0)/times.length:0;
-  var minT=times.length?Math.min.apply(null,times):0,maxT=times.length?Math.max.apply(null,times):0;
+  var timesF=removeOutliers(times);
+  var minT=timesF.length?timesF[0]:0,maxT=timesF.length?timesF[timesF.length-1]:0;
   var periodo=getPeriodRange(REPORT_DATE_START||fmtDateInput(new Date()),REPORT_DATE_END||fmtDateInput(new Date()));
 
   if(el('rel-sub'))el('rel-sub').textContent='Exibindo dados de '+periodo.label+'.';
@@ -1990,7 +2062,6 @@ function renderRelatorios(){
     {l:'Quantidade de pedidos',v:all.length,s:'no período'},
     {l:'Média por dia',v:mediaDia,s:'pedidos por dia no período'},
     {l:'Valor médio/dia',v:(function(){var tv=done.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);return tv>0?fmtBRL(tv/numDias):'—';})(),s:'faturado por dia no período'},
-    {l:'Concluídos no faturamento',v:done.length,s:'no período'},
     {l:'Tempo médio',v:avg?fmtTs(avg):'--',s:'até o faturamento (horário comercial)'},
     {l:'Mais rápido',v:minT?fmtTs(minT):'--',s:''},
     {l:'Mais lento',v:maxT?fmtTs(maxT):'--',s:''},
@@ -2000,7 +2071,7 @@ function renderRelatorios(){
 
   var sA={},sC={};
   MOVS.forEach(function(m){
-    var ms=parseInt(m.tempo_ms)||0;
+    var ms=(parseInt(m.tempo_ms)||0)+(parseInt(m.tempo_confirmacao_ms)||0);
     if(ms<=0||SETORES.indexOf(m.setor_origem)<0)return;
     sA[m.setor_origem]=(sA[m.setor_origem]||0)+ms;
     sC[m.setor_origem]=(sC[m.setor_origem]||0)+1;
@@ -2008,22 +2079,18 @@ function renderRelatorios(){
   var maxS=Math.max.apply(null,SETORES.map(function(s){return sC[s]?(sA[s]/sC[s]):0;}))||1;
   el('bars-setor').innerHTML=SETORES.map(function(s){
     var a=sC[s]?Math.round(sA[s]/sC[s]):0;
-    return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(sC[s]||0)+')</span></span></div>';
+    return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxS*100)+'%;background:'+(BC[s])+'</div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(sC[s]||0)+')</span></span></div>';
   }).join('');
 
-  if(ME&&ME.role==='admin'){
-    var cA={},cC={};
-    MOVS.forEach(function(m){
-      var ms=parseInt(m.tempo_confirmacao_ms)||0;
-      if(ms<=0||SETORES.indexOf(m.setor_destino)<0)return;
-      cA[m.setor_destino]=(cA[m.setor_destino]||0)+ms;
-      cC[m.setor_destino]=(cC[m.setor_destino]||0)+1;
-    });
-    var maxC=Math.max.apply(null,SETORES.map(function(s){return cC[s]?(cA[s]/cC[s]):0;}))||1;
-    el('bars-conf').innerHTML=SETORES.map(function(s){
-      var a=cC[s]?Math.round(cA[s]/cC[s]):0;
-      return '<div class="br"><span class="bn">'+(SL[s])+'</span><div class="bt"><div class="bf" style="width:'+Math.round(a/maxC*100)+'%;background:'+(BC[s])+'"></div></div><span class="bv">'+(a?fmtT(a):'--')+' <span style="color:var(--muted);font-size:10px">('+(cC[s]||0)+')</span></span></div>';
-    }).join('');
+  if(el('heatmap-dow'))el('heatmap-dow').innerHTML=renderHeatmapDoW(doneForHeat,_filtroDoW);
+  if(el('ranking-dow'))el('ranking-dow').innerHTML=renderRankingDoW(doneForHeat,_filtroDoW);
+  if(el('hora-pico-wrap')){
+    if(_filtroDoW!==''){
+      el('hora-pico-wrap').style.display='';
+      el('hora-pico-wrap').innerHTML=renderHoraPico(doneForHeat,parseInt(_filtroDoW));
+    }else{
+      el('hora-pico-wrap').style.display='none';
+    }
   }
 
   REPORT_PEDIDOS_EXPORT=all.slice();
@@ -2045,6 +2112,131 @@ function renderRelatorios(){
     }
   }
 }
+
+// ── HEATMAP + RANKING DIA DA SEMANA ──
+var DOW_LABELS=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+var DOW_FULL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+var DOW_ORDER=[1,2,3,4,5,6,0];
+
+function heatColor(intensity){
+  var r=Math.round(96+(29-96)*intensity);
+  var g=Math.round(165+(78-165)*intensity);
+  var b=Math.round(250+(216-250)*intensity);
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+function renderHeatmapDoW(done,selDow){
+  if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var cells={},weekDates={};
+  done.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var d=new Date(o.finalizado_at);
+    var dow=d.getDay();
+    var copy=new Date(d);copy.setHours(0,0,0,0);
+    var dayOfWk=copy.getDay()||7;
+    copy.setDate(copy.getDate()-dayOfWk+1);
+    var wk=copy.toISOString().slice(0,10);
+    weekDates[wk]=copy;
+    if(!cells[wk])cells[wk]={};
+    cells[wk][dow]=(cells[wk][dow]||0)+1;
+  });
+  var weeks=Object.keys(cells).sort();
+  if(!weeks.length)return '';
+  var maxCount=0;
+  weeks.forEach(function(wk){DOW_ORDER.forEach(function(d){maxCount=Math.max(maxCount,cells[wk][d]||0);});});
+  var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
+  var html='<div class="hm-wrap"><table class="hm-tbl"><thead><tr><th></th>';
+  DOW_ORDER.forEach(function(d){
+    var isSel=d===selDowInt;
+    html+='<th class="hm-head-col" style="'+(isSel?'color:var(--accent)':'')+'">'+DOW_LABELS[d]+'</th>';
+  });
+  html+='</tr></thead><tbody>';
+  weeks.forEach(function(wk){
+    var wDate=weekDates[wk];
+    var lbl=wDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    html+='<tr><td class="hm-week-lbl">'+lbl+'</td>';
+    DOW_ORDER.forEach(function(d){
+      var cnt=cells[wk][d]||0;
+      var isSel=d===selDowInt;
+      var intensity=maxCount>0?cnt/maxCount:0;
+      var bg=cnt===0?'var(--bg4)':heatColor(intensity);
+      var textCol=intensity>0.45?'#fff':(cnt>0?'rgba(255,255,255,0.75)':'var(--muted2)');
+      var selClass=isSel?' hm-selected':'';
+      html+='<td class="hm-cell'+selClass+'" style="background:'+bg+';color:'+textCol+'">'+(cnt||'')+'</td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div class="hm-legend"><span style="color:var(--muted);font-size:11px">Menos</span>';
+  for(var i=0;i<=4;i++)html+='<div class="hm-leg-cell" style="background:'+(i===0?'var(--bg4)':heatColor(i/4))+'"></div>';
+  html+='<span style="color:var(--muted);font-size:11px">Mais</span></div></div>';
+  return html;
+}
+
+function renderRankingDoW(done,selDow){
+  if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var counts={},values={},uniqueDays={};
+  DOW_ORDER.forEach(function(d){counts[d]=0;values[d]=0;uniqueDays[d]={};});
+  done.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var d=new Date(o.finalizado_at);
+    var dow=d.getDay();
+    counts[dow]++;
+    values[dow]+=(parseFloat(o.valor_nota_fat)||0);
+    uniqueDays[dow][o.finalizado_at.slice(0,10)]=true;
+  });
+  var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
+  var ranked=DOW_ORDER.filter(function(d){return counts[d]>0;}).sort(function(a,b){return counts[b]-counts[a];});
+  if(!ranked.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var maxCnt=counts[ranked[0]]||1;
+  var html='<table class="rk-dow-tbl"><thead><tr><th>DIA</th><th>NOTAS</th><th>MÉD./DIA</th><th>VALOR MÉD./DIA</th></tr></thead><tbody>';
+  ranked.forEach(function(d,idx){
+    var cnt=counts[d];
+    var val=values[d];
+    var nDays=Math.max(1,Object.keys(uniqueDays[d]).length);
+    var avgDay=Math.round(cnt/nDays);
+    var avgVal=val/nDays;
+    var barW=Math.round(cnt/maxCnt*100);
+    var isFirst=idx===0;
+    var isSel=d===selDowInt;
+    var barColor=isFirst?'#f59e0b':'#3b82f6';
+    if(isSel)barColor='var(--accent)';
+    html+='<tr class="'+(isFirst?'rk-first':'')+(isSel?' rk-selected':'')+'">';
+    html+='<td><span class="rk-num">'+(isFirst?'🏆':(idx+1))+'</span>';
+    html+='<span class="rk-day-name" style="'+(isSel?'color:var(--accent)':'')+'">'+DOW_FULL[d]+'</span>';
+    html+='<span class="rk-bar-wrap"><span class="rk-bar" style="width:'+barW+'%;background:'+barColor+'"></span></span></td>';
+    html+='<td class="rk-count">'+cnt.toLocaleString('pt-BR')+'</td>';
+    html+='<td class="rk-avg-td">'+avgDay+'</td>';
+    html+='<td class="rk-value">'+(avgVal>0?fmtBRL(avgVal):'—')+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  return html;
+}
+
+function renderHoraPico(done,dow){
+  var filtered=done.filter(function(o){
+    return !!o.finalizado_at && new Date(o.finalizado_at).getDay()===dow;
+  });
+  if(!filtered.length)return '';
+  var hourCounts={};
+  filtered.forEach(function(o){
+    var h=new Date(o.finalizado_at).getHours();
+    hourCounts[h]=(hourCounts[h]||0)+1;
+  });
+  var peakH=null,peakCnt=0;
+  Object.keys(hourCounts).forEach(function(h){
+    if(hourCounts[h]>peakCnt){peakCnt=hourCounts[h];peakH=parseInt(h);}
+  });
+  if(peakH===null)return '';
+  var hStr=String(peakH).padStart(2,'0');
+  var h2=String(peakH+1).padStart(2,'0');
+  return '<div class="hora-pico-kpi">'+
+    '<div class="hora-pico-lbl">⚡ Hora de pico — '+DOW_FULL[dow]+'</div>'+
+    '<div class="hora-pico-val">'+hStr+':00 – '+h2+':00h</div>'+
+    '<div class="hora-pico-sub">'+peakCnt+' pedido'+(peakCnt!==1?'s':'')+' faturado'+(peakCnt!==1?'s':'')+' nesse horário</div></div>';
+}
+
 var SETORlabel={todos:'Todos',atendimento:'Atendimento',estoque:'Estoque',corte:'Corte',separacao:'Separação',faturamento:'Faturamento'};
 function renderUsers(users){el('users-body').innerHTML=users.map(function(u){return '<tr><td>'+u.nome+'</td><td style="color:var(--muted)">'+u.login+'</td><td style="font-size:12px">'+(SETORlabel[u.setor]||u.setor)+'</td><td><span class="bar '+(u.role==='admin'?'bar-a':'bar-o')+'">'+u.role+'</span></td><td><span class="'+(u.ativo?'bon':'boff')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></td><td><button class="bmv" onclick="toggleUser(\''+u.id+'\','+u.ativo+',\''+u.login+'\')">'+(u.ativo?'Desativar':'Ativar')+'</button></td></tr>';}).join('');}
 async function toggleUser(id,ativo,login){if(login==='admin'){toast('Não é possível desativar o admin principal.','err');return;}ov(true);try{await sb.from('usuarios').update({ativo:!ativo}).eq('id',id);var u=await fetchUsuarios();renderUsers(u);toast('Usuário atualizado.','ok');}catch(e){toast(e.message,'err');}finally{ov(false);}}
