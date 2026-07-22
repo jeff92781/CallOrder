@@ -1991,9 +1991,15 @@ function renderTV(){
 
 
 var _filtroDoW='';
+var _chartGranularity='diaria';
+var _chartDoneData=[];
 function onFiltroDowChange(){
   _filtroDoW=el('filtro-dow').value;
   renderRelatorios();
+}
+function setChartGranularity(g){
+  _chartGranularity=g;
+  if(el('daily-chart'))el('daily-chart').innerHTML=renderDailyChart(_chartDoneData,_filtroDoW);
 }
 
 var _relFiltroPedido = '';
@@ -2111,7 +2117,8 @@ function renderRelatorios(){
   if(el('heatmap-hora'))el('heatmap-hora').innerHTML=renderHoraPicoHeatmap(doneForHeat,_filtroDoW);
   if(el('ranking-dow'))el('ranking-dow').innerHTML=renderRankingDoW(doneForHeat,_filtroDoW);
   if(el('insights-heatmap'))el('insights-heatmap').innerHTML=renderInsightsHeatmap(doneForHeat,_filtroDoW,numDias);
-  if(el('daily-chart'))el('daily-chart').innerHTML=renderDailyChart(doneForHeat,_filtroDoW);
+  _chartDoneData=doneForHeat.slice();
+  if(el('daily-chart'))el('daily-chart').innerHTML=renderDailyChart(_chartDoneData,_filtroDoW);
 
   REPORT_PEDIDOS_EXPORT=all.slice();
 
@@ -2330,37 +2337,75 @@ function renderInsightsHeatmap(done,selDow,numDias){
 function renderDailyChart(done,selDow){
   if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
   var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
-  var byDate={};
+  /* agrupar por data */
+  var rawByDate={};
   done.forEach(function(o){
     if(!o.finalizado_at)return;
     var d=new Date(o.finalizado_at),dow=d.getDay();
     if(dow===0)return;
     if(selDowInt>=0&&dow!==selDowInt)return;
     var dt=o.finalizado_at.slice(0,10);
-    if(!byDate[dt])byDate[dt]={orders:0,value:0};
-    byDate[dt].orders++;
-    byDate[dt].value+=(parseFloat(o.valor_nota_fat)||0);
+    if(!rawByDate[dt])rawByDate[dt]={orders:0,value:0};
+    rawByDate[dt].orders++;
+    rawByDate[dt].value+=(parseFloat(o.valor_nota_fat)||0);
   });
-  var dates=Object.keys(byDate).sort();
-  if(!dates.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados para o filtro selecionado.</div>';
-  var maxOrders=Math.max.apply(null,dates.map(function(d){return byDate[d].orders;}));
-  var maxValue=Math.max.apply(null,dates.map(function(d){return byDate[d].value;}));
-  var W=900,H=400,pL=58,pR=100,pT=44,pB=60;
+  var rawDates=Object.keys(rawByDate).sort();
+  if(!rawDates.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados para o filtro selecionado.</div>';
+
+  /* agregar conforme granularidade */
+  var gran=_chartGranularity||'diaria';
+  var byDate={},dates;
+  if(gran==='diaria'){
+    byDate=rawByDate; dates=rawDates;
+  } else {
+    rawDates.forEach(function(dt){
+      var key,d=new Date(dt+'T12:00:00');
+      if(gran==='semanal'){
+        var dow=d.getDay()||7;
+        d.setDate(d.getDate()-dow+1);
+        key=d.toISOString().slice(0,10);
+      } else {
+        key=dt.slice(0,7);
+      }
+      if(!byDate[key])byDate[key]={orders:0,value:0};
+      byDate[key].orders+=rawByDate[dt].orders;
+      byDate[key].value+=rawByDate[dt].value;
+    });
+    dates=Object.keys(byDate).sort();
+  }
+
+  /* botões granularidade */
+  var GRANS=[{k:'diaria',l:'Diária'},{k:'semanal',l:'Semanal'},{k:'mensal',l:'Mensal'}];
+  var btnsHtml='<div style="display:flex;gap:8px;margin-bottom:14px">';
+  GRANS.forEach(function(g){
+    var act=gran===g.k;
+    btnsHtml+='<button onclick="setChartGranularity(\''+g.k+'\')" style="padding:5px 18px;border-radius:20px;border:1px solid '+(act?'rgba(34,211,167,.4)':'var(--border2)')+';background:'+(act?'var(--accent-dim)':'var(--bg4)')+';color:'+(act?'var(--accent)':'var(--muted)')+';font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s">'+g.l+'</button>';
+  });
+  btnsHtml+='</div>';
+
+  /* SVG — largura 1400 para ocupar todo o espaço */
+  var W=1400,H=380,pL=58,pR=110,pT=44,pB=58;
   var cW=W-pL-pR,cH=H-pT-pB,n=dates.length;
   var step=n>1?cW/(n-1):cW;
-  var barW=Math.max(4,Math.min(20,Math.floor(step*0.5)));
+  var barW=Math.max(4,Math.min(28,Math.floor(step*0.55)));
   function xPos(i){return pL+(n===1?cW/2:i*step);}
   function yV(v){return pT+cH-(maxValue>0?v/maxValue*cH:0);}
+
+  var maxOrders=Math.max.apply(null,dates.map(function(d){return byDate[d].orders;}));
+  var maxValue=Math.max.apply(null,dates.map(function(d){return byDate[d].value;}));
+
   var uid='g'+Math.round(Math.random()*99999);
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet" style="width:100%;min-width:600px;height:400px;display:block">';
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">';
   svg+='<defs>';
-  svg+='<linearGradient id="'+uid+'v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3a7" stop-opacity="0.3"/><stop offset="100%" stop-color="#22d3a7" stop-opacity="0.02"/></linearGradient>';
-  svg+='<linearGradient id="'+uid+'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.9"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.3"/></linearGradient>';
+  svg+='<linearGradient id="'+uid+'v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3a7" stop-opacity="0.28"/><stop offset="100%" stop-color="#22d3a7" stop-opacity="0.02"/></linearGradient>';
+  svg+='<linearGradient id="'+uid+'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.9"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.25"/></linearGradient>';
   svg+='</defs>';
+
+  /* grid */
   var gridN=5;
   for(var g=0;g<=gridN;g++){
     var gy=+(pT+cH-cH*g/gridN).toFixed(1);
-    svg+='<line x1="'+pL+'" y1="'+gy+'" x2="'+(pL+cW)+'" y2="'+gy+'" stroke="rgba(99,179,237,'+(g===0?'0.18':'0.07')+')" stroke-width="'+(g===0?'1.5':'1')+'"/>';
+    svg+='<line x1="'+pL+'" y1="'+gy+'" x2="'+(pL+cW)+'" y2="'+gy+'" stroke="rgba(99,179,237,'+(g===0?'0.18':'0.06')+')" stroke-width="'+(g===0?'1.5':'1')+'"/>';
     svg+='<text x="'+(pL-8)+'" y="'+(gy+4)+'" text-anchor="end" font-size="10" font-family="monospace" fill="rgba(59,130,246,0.75)">'+Math.round(maxOrders*g/gridN)+'</text>';
     if(g>0){
       var vv=maxValue*g/gridN;
@@ -2368,38 +2413,59 @@ function renderDailyChart(done,selDow){
       svg+='<text x="'+(pL+cW+8)+'" y="'+(gy+4)+'" text-anchor="start" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.8)">'+vl+'</text>';
     }
   }
+
+  /* área faturamento */
   if(n>1){
     var ap='M'+xPos(0).toFixed(1)+','+(pT+cH);
     dates.forEach(function(dt,i){ap+=' L'+xPos(i).toFixed(1)+','+yV(byDate[dt].value).toFixed(1);});
     ap+=' L'+xPos(n-1).toFixed(1)+','+(pT+cH)+' Z';
     svg+='<path d="'+ap+'" fill="url(#'+uid+'v)" stroke="none"/>';
   }
+
+  /* barras pedidos */
   dates.forEach(function(dt,i){
     var x=xPos(i),cnt=byDate[dt].orders;
     var bh=maxOrders>0?cnt/maxOrders*cH:0;
     svg+='<rect x="'+(x-barW/2).toFixed(1)+'" y="'+(pT+cH-bh).toFixed(1)+'" width="'+barW+'" height="'+bh.toFixed(1)+'" fill="url(#'+uid+'b)" rx="2"/>';
   });
+
+  /* linha faturamento */
   var pts=dates.map(function(dt,i){return xPos(i).toFixed(1)+','+yV(byDate[dt].value).toFixed(1);}).join(' ');
   svg+='<polyline points="'+pts+'" fill="none" stroke="#22d3a7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+
+  /* pontos */
+  var dotR=n>60?2:3;
   dates.forEach(function(dt,i){
-    svg+='<circle cx="'+xPos(i).toFixed(1)+'" cy="'+yV(byDate[dt].value).toFixed(1)+'" r="3.5" fill="#22d3a7" stroke="#0b1121" stroke-width="1.5"/>';
+    svg+='<circle cx="'+xPos(i).toFixed(1)+'" cy="'+yV(byDate[dt].value).toFixed(1)+'" r="'+dotR+'" fill="#22d3a7" stroke="#0b1121" stroke-width="1.2"/>';
   });
-  var every=Math.max(1,Math.ceil(n/22));
+
+  /* labels eixo x */
+  var every=Math.max(1,Math.ceil(n/30));
   dates.forEach(function(dt,i){
     if(i%every!==0&&i!==n-1)return;
-    var p=dt.split('-'),lbl=p[2]+'/'+p[1];
+    var lbl;
+    if(gran==='mensal'){
+      var pts2=dt.split('-');lbl=pts2[1]+'/'+pts2[0].slice(2);
+    } else {
+      var pts2=dt.split('-');lbl=pts2[2]+'/'+pts2[1];
+    }
     var tx=+xPos(i).toFixed(1),ty=pT+cH+13;
     svg+='<text x="'+tx+'" y="'+ty+'" text-anchor="end" font-size="9" font-family="monospace" fill="rgba(232,237,245,0.55)" transform="rotate(-45 '+tx+' '+ty+')">'+lbl+'</text>';
   });
+
+  /* eixos */
   svg+='<line x1="'+pL+'" y1="'+pT+'" x2="'+pL+'" y2="'+(pT+cH)+'" stroke="rgba(59,130,246,0.25)" stroke-width="1.5"/>';
   svg+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="rgba(99,179,237,0.15)" stroke-width="1"/>';
   svg+='<line x1="'+(pL+cW)+'" y1="'+pT+'" x2="'+(pL+cW)+'" y2="'+(pT+cH)+'" stroke="rgba(34,211,167,0.25)" stroke-width="1.5"/>';
+
+  /* legenda */
   svg+='<rect x="'+pL+'" y="'+(pT-28)+'" width="11" height="11" fill="url(#'+uid+'b)" rx="2"/>';
   svg+='<text x="'+(pL+15)+'" y="'+(pT-18)+'" font-size="10" font-family="monospace" fill="rgba(59,130,246,0.9)">Pedidos (eixo esq.)</text>';
-  svg+='<circle cx="'+(pL+155)+'" cy="'+(pT-23)+'" r="5" fill="#22d3a7" stroke="#0b1121" stroke-width="1.5"/>';
-  svg+='<text x="'+(pL+165)+'" y="'+(pT-18)+'" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.9)">Faturamento (eixo dir.)</text>';
+  svg+='<circle cx="'+(pL+155)+'" cy="'+(pT-23)+'" r="4.5" fill="#22d3a7" stroke="#0b1121" stroke-width="1.5"/>';
+  svg+='<text x="'+(pL+164)+'" y="'+(pT-18)+'" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.9)">Faturamento (eixo dir.)</text>';
   svg+='</svg>';
-  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px 20px 10px;overflow-x:auto">'+svg+'</div>';
+
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px 20px 10px">'+btnsHtml+svg+'</div>';
 }
 
 function renderHoraPico(done,dow){
