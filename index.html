@@ -2342,6 +2342,8 @@ function renderDailyChart(done,selDow){
   var COPA_S='2026-06-11',COPA_E='2026-07-19';
   var BRA_DAYS=['2026-06-19','2026-06-24','2026-06-29'];
 
+  function fmtV(v){return v>=1e6?'R$'+(v/1e6).toFixed(2)+'M':v>=1e3?'R$'+Math.round(v/1e3)+'k':'R$'+Math.round(v);}
+
   var rawByDate={};
   done.forEach(function(o){
     if(!o.finalizado_at)return;
@@ -2404,29 +2406,21 @@ function renderDailyChart(done,selDow){
   var maxValue=Math.max.apply(null,dates.map(function(d){return byDate[d].value;}));
 
   var uid='g'+Math.round(Math.random()*99999);
+
+  /* helper tooltip inline */
+  function tip(html){
+    return 'onmouseenter="(function(e){var t=document.getElementById(\''+uid+'tip\'),r=t.parentElement.getBoundingClientRect();t.innerHTML=\''+html+'\';t.style.left=(e.clientX-r.left+14)+\'px\';t.style.top=(e.clientY-r.top-54)+\'px\';t.style.opacity=1;})(event)" onmouseleave="document.getElementById(\''+uid+'tip\').style.opacity=0"';
+  }
+
   var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">';
   svg+='<defs>';
-  /* gradiente normal */
   svg+='<linearGradient id="'+uid+'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.9"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.25"/></linearGradient>';
-  /* gradiente copa — cores bandeira EUA */
-  svg+='<linearGradient id="'+uid+'us" x1="0" y1="0" x2="0" y2="1">'
-    +'<stop offset="0%"   stop-color="#3C3B6E" stop-opacity="0.95"/>'
-    +'<stop offset="42%"  stop-color="#6B6BA8" stop-opacity="0.85"/>'
-    +'<stop offset="50%"  stop-color="#FFFFFF"  stop-opacity="0.35"/>'
-    +'<stop offset="58%"  stop-color="#CC2529" stop-opacity="0.85"/>'
-    +'<stop offset="100%" stop-color="#B22234" stop-opacity="0.9"/>'
-    +'</linearGradient>';
-  /* gradiente jogos brasil — cores bandeira do brasil */
-  svg+='<linearGradient id="'+uid+'br" x1="0" y1="0" x2="0" y2="1">'
-    +'<stop offset="0%"   stop-color="#009C3B" stop-opacity="0.95"/>'
-    +'<stop offset="45%"  stop-color="#FFDF00" stop-opacity="0.90"/>'
-    +'<stop offset="100%" stop-color="#002776" stop-opacity="0.85"/>'
-    +'</linearGradient>';
-  /* gradiente área faturamento */
+  svg+='<linearGradient id="'+uid+'us" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3C3B6E" stop-opacity="0.95"/><stop offset="42%" stop-color="#6B6BA8" stop-opacity="0.85"/><stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.35"/><stop offset="58%" stop-color="#CC2529" stop-opacity="0.85"/><stop offset="100%" stop-color="#B22234" stop-opacity="0.9"/></linearGradient>';
+  svg+='<linearGradient id="'+uid+'br" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#009C3B" stop-opacity="0.95"/><stop offset="45%" stop-color="#FFDF00" stop-opacity="0.90"/><stop offset="100%" stop-color="#002776" stop-opacity="0.85"/></linearGradient>';
   svg+='<linearGradient id="'+uid+'v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3a7" stop-opacity="0.28"/><stop offset="100%" stop-color="#22d3a7" stop-opacity="0.02"/></linearGradient>';
   svg+='</defs>';
 
-  /* fundo copa no gráfico (só diária) */
+  /* fundo copa */
   if(gran==='diaria'){
     var copaIdxs=dates.map(function(dt,i){return (dt>=COPA_S&&dt<=COPA_E)?i:-1;}).filter(function(i){return i>=0;});
     if(copaIdxs.length>0){
@@ -2441,11 +2435,7 @@ function renderDailyChart(done,selDow){
     var gy=+(pT+cH-cH*g/gridN).toFixed(1);
     svg+='<line x1="'+pL+'" y1="'+gy+'" x2="'+(pL+cW)+'" y2="'+gy+'" stroke="rgba(99,179,237,'+(g===0?'0.18':'0.06')+')" stroke-width="'+(g===0?'1.5':'1')+'"/>';
     svg+='<text x="'+(pL-8)+'" y="'+(gy+4)+'" text-anchor="end" font-size="10" font-family="monospace" fill="rgba(59,130,246,0.75)">'+Math.round(maxOrders*g/gridN)+'</text>';
-    if(g>0){
-      var vv=maxValue*g/gridN;
-      var vl=vv>=1000000?'R$'+(vv/1000000).toFixed(1)+'M':vv>=1000?'R$'+Math.round(vv/1000)+'k':'R$'+Math.round(vv);
-      svg+='<text x="'+(pL+cW+8)+'" y="'+(gy+4)+'" text-anchor="start" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.8)">'+vl+'</text>';
-    }
+    if(g>0){var vv=maxValue*g/gridN;var vl=vv>=1000000?'R$'+(vv/1000000).toFixed(1)+'M':vv>=1000?'R$'+Math.round(vv/1000)+'k':'R$'+Math.round(vv);svg+='<text x="'+(pL+cW+8)+'" y="'+(gy+4)+'" text-anchor="start" font-size="10" font-family="monospace" fill="rgba(34,211,167,0.8)">'+vl+'</text>';}
   }
 
   /* área faturamento */
@@ -2456,22 +2446,29 @@ function renderDailyChart(done,selDow){
     svg+='<path d="'+ap+'" fill="url(#'+uid+'v)" stroke="none"/>';
   }
 
-  /* barras pedidos com cor especial */
+  /* barras com tooltip */
   dates.forEach(function(dt,i){
-    var x=xPos(i),cnt=byDate[dt].orders;
+    var x=xPos(i),cnt=byDate[dt].orders,val=byDate[dt].value;
     var bh=maxOrders>0?cnt/maxOrders*cH:0;
-    svg+='<rect x="'+(x-barW/2).toFixed(1)+'" y="'+(pT+cH-bh).toFixed(1)+'" width="'+barW+'" height="'+bh.toFixed(1)+'" fill="'+barFill(dt,uid)+'" rx="2"/>';
+    var tipHtml=cnt+' pedidos&lt;br&gt;'+fmtV(val);
+    svg+='<rect x="'+(x-barW/2).toFixed(1)+'" y="'+(pT+cH-bh).toFixed(1)+'" width="'+barW+'" height="'+bh.toFixed(1)+'" fill="'+barFill(dt,uid)+'" rx="2" style="cursor:pointer" '+tip(tipHtml)+'/>';
   });
 
   /* linha faturamento */
   var pts=dates.map(function(dt,i){return xPos(i).toFixed(1)+','+yV(byDate[dt].value).toFixed(1);}).join(' ');
   svg+='<polyline points="'+pts+'" fill="none" stroke="#22d3a7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
 
-  /* pontos */
+  /* pontos com tooltip — hit area invisível + círculo visível */
   var dotR=n>60?2:3;
   dates.forEach(function(dt,i){
     var isBra=BRA_DAYS.indexOf(dt)>=0&&gran==='diaria';
-    svg+='<circle cx="'+xPos(i).toFixed(1)+'" cy="'+yV(byDate[dt].value).toFixed(1)+'" r="'+(isBra?4.5:dotR)+'" fill="'+(isBra?'#FFDF00':'#22d3a7')+'" stroke="#0b1121" stroke-width="1.2"/>';
+    var cx=xPos(i).toFixed(1),cy=yV(byDate[dt].value).toFixed(1);
+    var val=byDate[dt].value,cnt=byDate[dt].orders;
+    var tipHtml=fmtV(val)+'&lt;br&gt;'+cnt+' pedidos';
+    /* círculo visível */
+    svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(isBra?4.5:dotR)+'" fill="'+(isBra?'#FFDF00':'#22d3a7')+'" stroke="#0b1121" stroke-width="1.2" pointer-events="none"/>';
+    /* hit area transparente maior */
+    svg+='<circle cx="'+cx+'" cy="'+cy+'" r="10" fill="transparent" style="cursor:pointer" '+tip(tipHtml)+'/>';
   });
 
   /* labels eixo x */
@@ -2502,7 +2499,10 @@ function renderDailyChart(done,selDow){
   svg+='<text x="'+(legX+450)+'" y="'+(legY+10)+'" font-size="10" font-family="monospace" fill="rgba(100,220,130,0.9)">Jogos Brasil (19/06 · 24/06 · 29/06)</text>';
   svg+='</svg>';
 
-  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px 20px 10px">'+btnsHtml+svg+'</div>';
+  /* tooltip div */
+  var tipDiv='<div id="'+uid+'tip" style="position:absolute;background:rgba(11,17,33,0.93);border:1px solid rgba(99,179,237,0.3);border-radius:7px;padding:7px 12px;font-family:monospace;font-size:12px;color:#e8edf5;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:20;line-height:1.6"></div>';
+
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px 20px 10px;position:relative">'+tipDiv+btnsHtml+svg+'</div>';
 }
 function renderHoraPico(done,dow){
   var filtered=done.filter(function(o){
