@@ -424,6 +424,8 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
         <div id="heatmap-hora"></div>
       </div>
     </div>
+    <div class="st">Insights do período</div>
+    <div id="insights-heatmap" style="margin-bottom:28px"></div>
     <div class="st">Ranking — dias que mais emitem notas</div>
     <div id="ranking-dow" style="margin-bottom:28px"></div>
     <div class="st">Registro dos pedidos</div>
@@ -2101,6 +2103,7 @@ function renderRelatorios(){
   if(el('heatmap-dow'))el('heatmap-dow').innerHTML=renderHeatmapDoW(doneForHeat,_filtroDoW);
   if(el('heatmap-hora'))el('heatmap-hora').innerHTML=renderHoraPicoHeatmap(doneForHeat,_filtroDoW);
   if(el('ranking-dow'))el('ranking-dow').innerHTML=renderRankingDoW(doneForHeat,_filtroDoW);
+  if(el('insights-heatmap'))el('insights-heatmap').innerHTML=renderInsightsHeatmap(doneForHeat,_filtroDoW);
 
   REPORT_PEDIDOS_EXPORT=all.slice();
 
@@ -2262,6 +2265,100 @@ function renderHoraPicoHeatmap(done,selDow){
   return html;
 }
 
+function renderInsightsHeatmap(done,selDow){
+  if(!done||!done.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados.</div>';
+  var HOURS=[8,9,10,11,12,13,14,15,16,17,18];
+  var selDowInt=selDow!==undefined&&selDow!==''?parseInt(selDow):-1;
+  var filtered=selDowInt>=0?done.filter(function(o){return !!o.finalizado_at&&new Date(o.finalizado_at).getDay()===selDowInt;}):done;
+  if(!filtered.length)return '<div style="color:var(--muted);font-size:12px;padding:16px">Sem dados para o filtro selecionado.</div>';
+
+  /* hour counts */
+  var hourCounts={};
+  HOURS.forEach(function(h){hourCounts[h]=0;});
+  filtered.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var h=new Date(o.finalizado_at).getHours();
+    if(h>=8&&h<=18)hourCounts[h]=(hourCounts[h]||0)+1;
+  });
+
+  var sortedH=HOURS.slice().sort(function(a,b){return hourCounts[b]-hourCounts[a];});
+  var peakH=sortedH[0], peakCnt=hourCounts[peakH]||0;
+  var quietH=sortedH[sortedH.length-1], quietCnt=hourCounts[quietH]||0;
+  var idleHours=HOURS.filter(function(h){return hourCounts[h]===0;});
+
+  /* unique days */
+  var uniqueDays={};
+  filtered.forEach(function(o){if(o.finalizado_at)uniqueDays[o.finalizado_at.slice(0,10)]=true;});
+  var nDays=Math.max(1,Object.keys(uniqueDays).length);
+
+  var totalOrders=filtered.length;
+  var avgOrders=(totalOrders/nDays).toFixed(1);
+  var totalValue=filtered.reduce(function(s,o){return s+(parseFloat(o.valor_nota_fat)||0);},0);
+  var avgValue=totalValue/nDays;
+
+  /* idle label */
+  var idleVal,idleSub;
+  if(idleHours.length){
+    idleVal=idleHours.length+' hora'+(idleHours.length>1?'s':'');
+    idleSub='sem pedidos: '+idleHours.map(function(h){return String(h).padStart(2,'0')+'h';}).join(', ');
+  }else{
+    idleVal=String(quietH).padStart(2,'0')+'h';
+    idleSub='hora mais calma — '+quietCnt+' pedidos';
+  }
+
+  /* determine if peak hours form a contiguous block for secondary insight */
+  var avgPeakBlock=sortedH.slice(0,3);
+  var blockLabel=avgPeakBlock.map(function(h){return String(h).padStart(2,'0')+'h';}).join(', ');
+
+  var cards=[
+    {
+      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+      label:'Hora de pico',
+      value:String(peakH).padStart(2,'0')+'h',
+      sub:peakCnt+' pedidos nesse horário',
+      extra:'Top 3: '+blockLabel,
+      color:'#f59e0b',dim:'rgba(245,158,11,0.08)',border:'rgba(245,158,11,0.25)'
+    },
+    {
+      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+      label:'Ociosidade',
+      value:idleVal,
+      sub:idleSub,
+      extra:'',
+      color:'var(--muted)',dim:'var(--bg3)',border:'var(--border2)'
+    },
+    {
+      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+      label:'Média de pedidos / dia',
+      value:String(avgOrders).replace('.',','),
+      sub:totalOrders+' pedidos em '+nDays+' dia'+(nDays>1?'s':''),
+      extra:'',
+      color:'var(--cyan)',dim:'rgba(6,182,212,0.08)',border:'rgba(6,182,212,0.25)'
+    },
+    {
+      icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      label:'Faturamento médio / dia',
+      value:avgValue>0?fmtBRL(avgValue):'—',
+      sub:totalValue>0?'total: '+fmtBRL(totalValue):'sem faturamento registrado',
+      extra:'',
+      color:'var(--accent)',dim:'rgba(34,211,167,0.08)',border:'rgba(34,211,167,0.25)'
+    }
+  ];
+
+  var labelCtx=selDowInt>=0?DOW_FULL[selDowInt]:'período selecionado';
+  var html='<div style="display:flex;gap:14px;flex-wrap:wrap">';
+  cards.forEach(function(cd){
+    html+='<div style="flex:1;min-width:190px;background:'+cd.dim+';border:1px solid '+cd.border+';border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;gap:4px">';
+    html+='<div style="display:flex;align-items:center;gap:7px;color:'+cd.color+';font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:2px">';
+    html+=cd.icon+' '+cd.label+'</div>';
+    html+='<div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text);line-height:1">'+cd.value+'</div>';
+    if(cd.sub)html+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+cd.sub+'</div>';
+    if(cd.extra)html+='<div style="font-size:11px;color:'+cd.color+';opacity:.7;margin-top:1px">'+cd.extra+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
 function renderHoraPico(done,dow){
   var filtered=done.filter(function(o){
     return !!o.finalizado_at && new Date(o.finalizado_at).getDay()===dow;
