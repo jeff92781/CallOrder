@@ -2101,11 +2101,28 @@ function renderRelatorios(){
   ].map(function(k){return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv" style="font-size:'+((k.v&&String(k.v).length>8)?'16px':'24px')+'">'+k.v+'</div><div class="ks">'+k.s+'</div></div>';}).join('');
 
   var sA={},sC={};
+  /* tempo por setor em horário comercial — igual ao KPI de tempo médio */
   MOVS.forEach(function(m){
-    var ms=(parseInt(m.tempo_ms)||0)+(parseInt(m.tempo_confirmacao_ms)||0);
-    if(ms<=0||SETORES.indexOf(m.setor_origem)<0)return;
+    if(SETORES.indexOf(m.setor_origem)<0||m.setor_origem==='faturamento')return;
+    var ms=m.entrada_at&&m.saida_at?businessMs(tsMs(m.entrada_at),tsMs(m.saida_at)):0;
+    if(ms<=0)return;
     sA[m.setor_origem]=(sA[m.setor_origem]||0)+ms;
     sC[m.setor_origem]=(sC[m.setor_origem]||0)+1;
+  });
+  /* faturamento: entrada = saida_at da mov separacao→faturamento, saida = finalizado_at do pedido */
+  var _fatEntry={};
+  MOVS.forEach(function(m){
+    if(m.setor_origem==='separacao'&&m.setor_destino==='faturamento'&&m.pedido_id&&m.saida_at)
+      _fatEntry[m.pedido_id]=m.saida_at;
+  });
+  done.forEach(function(o){
+    if(!o.finalizado_at)return;
+    var entAt=_fatEntry[o.id];
+    if(!entAt)return;
+    var ms=businessMs(tsMs(entAt),tsMs(o.finalizado_at));
+    if(ms<=0)return;
+    sA['faturamento']=(sA['faturamento']||0)+ms;
+    sC['faturamento']=(sC['faturamento']||0)+1;
   });
   var maxS=Math.max.apply(null,SETORES.map(function(s){return sC[s]?(sA[s]/sC[s]):0;}))||1;
   el('bars-setor').innerHTML=SETORES.map(function(s){
