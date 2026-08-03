@@ -1538,7 +1538,7 @@ function checkAtrasoAtendimento(){
   if(el('atraso-modal')&&el('atraso-modal').style.display!=='none')return;
   var LIMITE=10*60*1000;
   var candidatos=PEDIDOS.filter(function(o){
-    return o.setor==='atendimento'&&o.status==='em_andamento'&&!o.atraso_justificativa&&!_atrasoShown.has(o.id);
+    return o.setor==='atendimento'&&o.status==='em_andamento'&&(o.prioridade||'retira')==='balcao'&&!o.atraso_justificativa&&!_atrasoShown.has(o.id);
   });
   var alvo=null;
   for(var i=0;i<candidatos.length;i++){
