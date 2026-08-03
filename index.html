@@ -1031,6 +1031,13 @@ function startPolling(){
     if(!ME)return;
     refreshUI();
   },60000); // 60s — Realtime cobre atualizações instantâneas; polling é só fallback
+  /* checagem de atraso independente do render — dispara mesmo sem mudança de dados */
+  if(_atrasoTi)clearInterval(_atrasoTi);
+  _atrasoTi=setInterval(function(){
+    if(!ME)return;
+    if(typeof telaAtiva==='function'&&telaAtiva()!=='screen-painel')return;
+    checkAtrasoAtendimento();
+  },20000);
 }
 function stopPolling(){
   if(_pollTi){clearInterval(_pollTi);_pollTi=null;}
@@ -1287,6 +1294,7 @@ async function doLogin(){
 }
 function logout(){
   ME=null;PEDIDOS=[];MOVS=[];clearSession();
+  if(_atrasoTi){clearInterval(_atrasoTi);_atrasoTi=null;}
   stopPolling();
   if(_ch)sb.removeChannel(_ch);
   if(_ti)clearInterval(_ti);
@@ -2161,6 +2169,7 @@ var _chartDoneData=[];
 var _atrasoShown=new Set();
 var _atrasoTarget=null;
 var _verJusTarget=null;
+var _atrasoTi=null;
 function onFiltroDowChange(){
   _filtroDoW=el('filtro-dow').value;
   renderRelatorios();
