@@ -327,11 +327,17 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
 </div>
 <!-- modal: visualizar justificativa no relatório -->
 <div id="ver-jus-modal" class="atraso-modal" style="display:none">
-  <div class="atraso-box">
-    <h3>📋 Justificativa de atraso</h3>
-    <div id="ver-jus-body" style="margin-bottom:16px;font-size:13px;color:var(--fg);line-height:1.7"></div>
-    <div class="atraso-acts">
-      <button class="btn-jus-save" onclick="el('ver-jus-modal').style.display='none'">Fechar</button>
+  <div class="atraso-box" style="max-height:80vh;overflow-y:auto;display:flex;flex-direction:column">
+    <h3 style="margin-bottom:12px">📋 Justificativa de atraso</h3>
+    <div id="ver-jus-body" style="font-size:13px;color:var(--fg);line-height:1.7;flex:1"></div>
+    <div id="jus-add-area" style="display:none;margin-top:10px">
+      <textarea id="jus-add-texto" style="width:100%;box-sizing:border-box;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--fg);font-family:var(--font-mono);font-size:13px;padding:10px 12px;resize:vertical;min-height:80px;outline:none" placeholder="Adicione novas informações..."></textarea>
+    </div>
+    <div class="atraso-acts" style="margin-top:14px">
+      <button id="jus-btn-fechar"    class="btn-jus-skip"  onclick="el('ver-jus-modal').style.display='none'">Fechar</button>
+      <button id="jus-btn-adicionar" class="btn-jus-save"  style="background:#6366f1" onclick="mostrarAddJus()">+ Adicionar</button>
+      <button id="jus-btn-salvar"    class="btn-jus-save"  style="display:none" onclick="confirmarAdicaoJus()">Salvar</button>
+      <button id="jus-btn-cancelar"  class="btn-jus-skip"  style="display:none" onclick="cancelarAddJus()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1552,13 +1558,15 @@ async function salvarJustificativaAtraso(){
   ov(true);
   try{
     var agora=new Date().toISOString();
+    var entry={texto:texto,por:ME.login,at:agora};
+    var json=JSON.stringify([entry]);
     var res=await sb.from('pedidos').update({
-      atraso_justificativa:texto,
+      atraso_justificativa:json,
       atraso_justificativa_at:agora,
       atraso_justificativa_por:ME.login
     }).eq('id',_atrasoTarget);
     if(res.error)throw res.error;
-    upsertPedidoLocal({id:_atrasoTarget,atraso_justificativa:texto,atraso_justificativa_at:agora,atraso_justificativa_por:ME.login});
+    upsertPedidoLocal({id:_atrasoTarget,atraso_justificativa:json,atraso_justificativa_at:agora,atraso_justificativa_por:ME.login});
     _atrasoShown.add(_atrasoTarget);
     el('atraso-modal').style.display='none';
     toast('Justificativa registrada.','ok');
@@ -1569,17 +1577,71 @@ function pularAtraso(){
   if(_atrasoTarget)_atrasoShown.add(_atrasoTarget);
   el('atraso-modal').style.display='none';
 }
+function parseJus(o){
+  if(!o||!o.atraso_justificativa)return[];
+  try{var r=JSON.parse(o.atraso_justificativa);return Array.isArray(r)?r:[{texto:r,por:o.atraso_justificativa_por||'—',at:o.atraso_justificativa_at||''}];}
+  catch(e){return [{texto:o.atraso_justificativa,por:o.atraso_justificativa_por||'—',at:o.atraso_justificativa_at||''}];}
+}
+function renderJusEntries(entries){
+  if(!entries.length)return '<div style="color:var(--muted);font-size:12px">Nenhum registro.</div>';
+  return entries.map(function(e,i){
+    var dt=e.at?new Date(e.at).toLocaleString('pt-BR'):'—';
+    var txt=String(e.texto||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<div style="background:var(--bg4);border-radius:8px;padding:12px 14px;margin-bottom:10px">'
+      +'<div style="white-space:pre-wrap;font-size:13px;color:var(--fg);margin-bottom:8px">'+txt+'</div>'
+      +'<div style="font-size:11px;color:var(--muted)"><strong>'+(e.por||'—')+'</strong> &middot; '+dt+'</div>'
+      +'</div>';
+  }).join('');
+}
 function verJustificativa(pedidoId){
-  var lista=PEDIDOS_REL.length?PEDIDOS_REL:PEDIDOS;
-  var o=lista.find(function(p){return p.id===pedidoId;});
+  var o=PEDIDOS.find(function(p){return p.id===pedidoId;})||PEDIDOS_REL.find(function(p){return p.id===pedidoId;});
   if(!o||!o.atraso_justificativa)return;
-  var dt=o.atraso_justificativa_at?new Date(o.atraso_justificativa_at).toLocaleString('pt-BR'):'—';
-  var por=o.atraso_justificativa_por?o.atraso_justificativa_por:'—';
-  var txt=String(o.atraso_justificativa).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  el('ver-jus-body').innerHTML=
-    '<div style="background:var(--bg4);border-radius:8px;padding:14px 16px;margin-bottom:12px;white-space:pre-wrap">'+txt+'</div>'+
-    '<div style="font-size:11px;color:var(--muted)">Registrado por <strong>'+por+'</strong> em '+dt+'</div>';
+  _verJusTarget=pedidoId;
+  el('ver-jus-body').innerHTML=renderJusEntries(parseJus(o));
+  el('jus-add-area').style.display='none';
+  el('jus-btn-adicionar').style.display='';
+  el('jus-btn-salvar').style.display='none';
+  el('jus-btn-cancelar').style.display='none';
   el('ver-jus-modal').style.display='flex';
+}
+function mostrarAddJus(){
+  el('jus-add-area').style.display='block';
+  if(el('jus-add-texto'))el('jus-add-texto').value='';
+  el('jus-btn-adicionar').style.display='none';
+  el('jus-btn-salvar').style.display='';
+  el('jus-btn-cancelar').style.display='';
+  setTimeout(function(){if(el('jus-add-texto'))el('jus-add-texto').focus();},50);
+}
+function cancelarAddJus(){
+  el('jus-add-area').style.display='none';
+  el('jus-btn-adicionar').style.display='';
+  el('jus-btn-salvar').style.display='none';
+  el('jus-btn-cancelar').style.display='none';
+}
+async function confirmarAdicaoJus(){
+  var texto=(el('jus-add-texto').value||'').trim();
+  if(!texto){toast('Informe o texto antes de salvar.','warn');return;}
+  var o=PEDIDOS.find(function(p){return p.id===_verJusTarget;})||PEDIDOS_REL.find(function(p){return p.id===_verJusTarget;});
+  if(!o)return;
+  var entries=parseJus(o);
+  var agora=new Date().toISOString();
+  entries.push({texto:texto,por:ME.login,at:agora});
+  var json=JSON.stringify(entries);
+  ov(true);
+  try{
+    var res=await sb.from('pedidos').update({atraso_justificativa:json}).eq('id',_verJusTarget);
+    if(res.error)throw res.error;
+    upsertPedidoLocal({id:_verJusTarget,atraso_justificativa:json});
+    /* update PEDIDOS_REL too if present */
+    var idx2=PEDIDOS_REL.findIndex(function(p){return p.id===_verJusTarget;});
+    if(idx2>=0)PEDIDOS_REL[idx2]=Object.assign({},PEDIDOS_REL[idx2],{atraso_justificativa:json});
+    /* re-render entries in modal */
+    var updated=PEDIDOS.find(function(p){return p.id===_verJusTarget;})||PEDIDOS_REL.find(function(p){return p.id===_verJusTarget;});
+    el('ver-jus-body').innerHTML=renderJusEntries(parseJus(updated));
+    cancelarAddJus();
+    toast('Informação adicionada.','ok');
+  }catch(e){toast(e.message,'err');}
+  finally{ov(false);}
 }
 function renderPainel(){
   el('panel-date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
@@ -1671,7 +1733,7 @@ function renderCard(o,setor){
   var totalFreezeAttr = t.freeze ? ' data-timer-freeze="'+t.freeze+'"' : '';
 
   return '<div class="card '+pC+' '+(o.status==='pronto_balcao'?'balcao-ready':'')+'">' +
-    '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+parcialBadge+'</div>' +
+    '<div class="card-top"><span class="card-num">#'+o.numero+'</span>'+parcialBadge++(o.atraso_justificativa?'<span onclick="verJustificativa(\''+o.id+'\')" title="Ver justificativa de atraso" style="cursor:pointer;color:#f59e0b;font-size:13px;margin-left:6px;vertical-align:middle">&#9888;</span>':'')+'</div>' +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'+(o.nome_cliente?'<span class="card-cli" style="margin-bottom:0">'+o.nome_cliente+'</span>':'')+'<span class="card-meta" style="margin-bottom:0">'+hora+' · '+o.criado_por+'</span>'+prioBadge(prio)+'</div>' +
     vendedorHtml +
     (podeCriarPedido()?'<div style="margin-bottom:6px"><button class="bmv" style="padding:2px 10px;font-size:10px;line-height:1.5;border-radius:6px" onclick="togglePrio(\''+o.id+'\',\''+prio+'\')">⇄ Alterar</button></div>':'') +
@@ -2087,6 +2149,7 @@ var _chartGranularity='diaria';
 var _chartDoneData=[];
 var _atrasoShown=new Set();
 var _atrasoTarget=null;
+var _verJusTarget=null;
 function onFiltroDowChange(){
   _filtroDoW=el('filtro-dow').value;
   renderRelatorios();
