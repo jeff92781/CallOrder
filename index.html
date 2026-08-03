@@ -293,12 +293,49 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--border3)}
 
+
+/* ── atraso justificativa ── */
+.atraso-modal{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:9999}
+.atraso-box{background:var(--bg2);border:1px solid rgba(245,158,11,0.45);border-radius:var(--radius);padding:28px 32px;width:min(480px,92vw);box-shadow:0 8px 40px rgba(0,0,0,0.5)}
+.atraso-box h3{margin:0 0 6px;font-size:16px;color:#f59e0b}
+.atraso-box p{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.atraso-box textarea{width:100%;box-sizing:border-box;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--fg);font-family:var(--font-mono);font-size:13px;padding:10px 12px;resize:vertical;min-height:90px;outline:none}
+.atraso-box textarea:focus{border-color:rgba(245,158,11,0.5)}
+.atraso-acts{display:flex;gap:10px;margin-top:14px;justify-content:flex-end}
+.btn-jus-save{background:#f59e0b;color:#0b1121;border:none;border-radius:8px;padding:8px 22px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-jus-save:hover{background:#fbbf24}
+.btn-jus-skip{background:var(--bg4);color:var(--muted);border:1px solid var(--border2);border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer}
+.jus-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:5px;padding:2px 8px;font-size:11px;color:#f59e0b;cursor:pointer;white-space:nowrap}
+.jus-badge:hover{background:rgba(245,158,11,0.28)}
 </style>
 </head>
 <body>
 
 <div id="ov" class="h">Carregando...</div>
 <div id="tw"></div>
+<!-- modal: justificativa de atraso no atendimento -->
+<div id="atraso-modal" class="atraso-modal" style="display:none">
+  <div class="atraso-box">
+    <h3 id="atraso-title">⚠ Pedido há mais de 10 min no Atendimento</h3>
+    <p id="atraso-sub">Informe o motivo do atraso.</p>
+    <textarea id="atraso-texto" placeholder="Ex: Cliente aguardando retorno sobre disponibilidade de produto..."></textarea>
+    <div class="atraso-acts">
+      <button class="btn-jus-skip" onclick="pularAtraso()">Pular por agora</button>
+      <button class="btn-jus-save" onclick="salvarJustificativaAtraso()">Salvar justificativa</button>
+    </div>
+  </div>
+</div>
+<!-- modal: visualizar justificativa no relatório -->
+<div id="ver-jus-modal" class="atraso-modal" style="display:none">
+  <div class="atraso-box">
+    <h3>📋 Justificativa de atraso</h3>
+    <div id="ver-jus-body" style="margin-bottom:16px;font-size:13px;color:var(--fg);line-height:1.7"></div>
+    <div class="atraso-acts">
+      <button class="btn-jus-save" onclick="el('ver-jus-modal').style.display='none'">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <nav id="main-nav" style="display:none">
   <span class="logo" onclick="go('painel')" style="cursor:pointer">Call <span>Order</span></span>
   <div class="nav-tabs">
@@ -438,7 +475,7 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <div class="st">Registro dos pedidos</div>
     <div class="rkt-scroll-wrap">
       <table class="rkt">
-        <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th></tr></thead>
+        <thead><tr><th>Entrada</th><th>Pedido</th><th>Cliente</th><th>NF</th><th>Valor Faturado</th><th>Tempo total</th><th>Destino</th><th>Operação</th><th>Obs.</th></tr></thead>
         <tbody id="pedidos-dia-body"></tbody>
         <tfoot id="pedidos-dia-tfoot"></tfoot>
       </table>
@@ -1490,6 +1527,60 @@ function calcTotalMs(o) {
   return { entry: entry, freeze: freeze };
 }
 
+function checkAtrasoAtendimento(){
+  if(!ME||!podeAtuarNoSetor('atendimento'))return;
+  if(el('atraso-modal')&&el('atraso-modal').style.display!=='none')return;
+  var LIMITE=10*60*1000;
+  var candidatos=PEDIDOS.filter(function(o){
+    return o.setor==='atendimento'&&o.status==='em_andamento'&&!o.atraso_justificativa&&!_atrasoShown.has(o.id);
+  });
+  var alvo=null;
+  for(var i=0;i<candidatos.length;i++){
+    var s=calcSetorMs(candidatos[i]);
+    if(businessMs(s.entry,s.freeze||now())>LIMITE){alvo=candidatos[i];break;}
+  }
+  if(!alvo)return;
+  _atrasoTarget=alvo.id;
+  if(el('atraso-title'))el('atraso-title').textContent='⚠ Pedido #'+alvo.numero+' h\xe1 mais de 10 min no Atendimento';
+  if(el('atraso-sub'))el('atraso-sub').textContent='Cliente: '+(alvo.nome_cliente||'—')+'. Informe o motivo do atraso.';
+  if(el('atraso-texto'))el('atraso-texto').value='';
+  el('atraso-modal').style.display='flex';
+}
+async function salvarJustificativaAtraso(){
+  var texto=(el('atraso-texto').value||'').trim();
+  if(!texto){toast('Informe o motivo antes de salvar.','warn');return;}
+  ov(true);
+  try{
+    var agora=new Date().toISOString();
+    var res=await sb.from('pedidos').update({
+      atraso_justificativa:texto,
+      atraso_justificativa_at:agora,
+      atraso_justificativa_por:ME.login
+    }).eq('id',_atrasoTarget);
+    if(res.error)throw res.error;
+    upsertPedidoLocal({id:_atrasoTarget,atraso_justificativa:texto,atraso_justificativa_at:agora,atraso_justificativa_por:ME.login});
+    _atrasoShown.add(_atrasoTarget);
+    el('atraso-modal').style.display='none';
+    toast('Justificativa registrada.','ok');
+  }catch(e){toast(e.message,'err');}
+  finally{ov(false);}
+}
+function pularAtraso(){
+  if(_atrasoTarget)_atrasoShown.add(_atrasoTarget);
+  el('atraso-modal').style.display='none';
+}
+function verJustificativa(pedidoId){
+  var lista=PEDIDOS_REL.length?PEDIDOS_REL:PEDIDOS;
+  var o=lista.find(function(p){return p.id===pedidoId;});
+  if(!o||!o.atraso_justificativa)return;
+  var dt=o.atraso_justificativa_at?new Date(o.atraso_justificativa_at).toLocaleString('pt-BR'):'—';
+  var por=o.atraso_justificativa_por?o.atraso_justificativa_por:'—';
+  var txt=String(o.atraso_justificativa).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el('ver-jus-body').innerHTML=
+    '<div style="background:var(--bg4);border-radius:8px;padding:14px 16px;margin-bottom:12px;white-space:pre-wrap">'+txt+'</div>'+
+    '<div style="font-size:11px;color:var(--muted)">Registrado por <strong>'+por+'</strong> em '+dt+'</div>';
+  el('ver-jus-modal').style.display='flex';
+}
 function renderPainel(){
   el('panel-date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
   if(temSetorRestrito()){
@@ -1504,6 +1595,7 @@ function renderPainel(){
     var chegando=PEDIDOS.filter(function(o){return o.status==='aguardando'&&o.setor_pendente===setor;});
     return '<div class="kc"><div class="ch">'+sectorIcon(setor)+'<span class="cn">'+SL[setor]+'</span><span class="cc">'+(items.length+chegando.length)+(chegando.length?' ('+chegando.length+'⌛)':'')+'</span></div>'+chegando.map(renderTransCard).join('')+items.map(function(o){return renderCard(o,setor);}).join('')+'</div>';
   }).join('');
+  setTimeout(checkAtrasoAtendimento,400);
 }
 function renderTransCard(o){
   var elapsed=now()-tsMs(o.pendente_desde),alerta=elapsed>ALERT_MS;
@@ -1993,6 +2085,8 @@ function renderTV(){
 var _filtroDoW='';
 var _chartGranularity='diaria';
 var _chartDoneData=[];
+var _atrasoShown=new Set();
+var _atrasoTarget=null;
 function onFiltroDowChange(){
   _filtroDoW=el('filtro-dow').value;
   renderRelatorios();
@@ -2145,8 +2239,9 @@ function renderRelatorios(){
     var t=(o.finalizado_at?tsMs(o.finalizado_at):now())-tsMs(o.entrada_at);
     var destino=getDestinoFinal(o);
     var valorNF=parseFloat(o.valor_nota_fat)||0;
-    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td><td>'+prioBadge(o.prioridade||'retira')+'</td></tr>';
-  }).join(''):'<tr><td colspan="8" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
+    var jusBadge=o.atraso_justificativa?'<span class="jus-badge" onclick="verJustificativa(\''+o.id+'\')">&#9888; ver motivo</span>':'';
+    return '<tr><td>'+(o.entrada_at?new Date(o.entrada_at).toLocaleString('pt-BR'):'—')+'</td><td style="font-family:var(--font-head);font-size:16px;font-weight:700">#'+o.numero+'</td><td>'+(o.nome_cliente||'—')+'</td><td>'+(o.num_nota||'—')+'</td><td style="color:var(--accent);font-weight:600">'+(valorNF>0?fmtBRL(valorNF):'—')+'</td><td>'+fmtT(Math.max(0,t))+'</td><td>'+destino+'</td><td>'+prioBadge(o.prioridade||'retira')+'</td><td>'+jusBadge+'</td></tr>';
+  }).join(''):'<tr><td colspan="9" style="color:var(--muted);text-align:center">Nenhum pedido registrado no período selecionado.</td></tr>';
 
   if(el('pedidos-dia-tfoot')){
     if(totalValorRel>0){
