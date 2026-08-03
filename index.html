@@ -319,8 +319,8 @@ main{padding:20px 28px;width:100%;position:relative;z-index:1}
     <h3 id="atraso-title">⚠ Pedido há mais de 10 min no Atendimento</h3>
     <p id="atraso-sub">Informe o motivo do atraso.</p>
     <textarea id="atraso-texto" placeholder="Ex: Cliente aguardando retorno sobre disponibilidade de produto..."></textarea>
+    <div style="margin-top:10px;font-size:11px;color:#f59e0b">&#128274; O sistema permanece bloqueado at&eacute; que a justificativa seja registrada.</div>
     <div class="atraso-acts">
-      <button class="btn-jus-skip" onclick="pularAtraso()">Pular por agora</button>
       <button class="btn-jus-save" onclick="salvarJustificativaAtraso()">Salvar justificativa</button>
     </div>
   </div>
@@ -1085,6 +1085,7 @@ function openOccurrence(id,setorLabel){
   openM('m-ocorrencia');
 }
 function openDeletePedido(id){
+  if(atrasoBloqueado())return;
   _occCtx={modo:'exclusao',id:id,setorLabel:'Exclusão'};
   el('occ-title').textContent='Excluir pedido da tela';
   el('occ-desc').textContent='Informe o motivo da exclusão. Apenas o Atendimento pode executar essa ação.';
@@ -1101,6 +1102,7 @@ async function openReturnTransit(id){
   openM('m-ocorrencia');
 }
 async function openReturnActive(id){
+  if(atrasoBloqueado())return;
   var pedido=getPedidoById(id);
   if(!pedido)return;
   ov(true);
@@ -1474,6 +1476,7 @@ function getTempoTotalPedido(o){
 
 // ── Toggle prioridade (Retira ↔ Balcão) ──
 async function togglePrio(id, currentPrio) {
+  if(atrasoBloqueado())return;
   var newPrio = currentPrio === 'balcao' ? 'retira' : 'balcao';
   try {
     var res = await sb.from('pedidos').update({prioridade: newPrio}).eq('id', id);
@@ -1533,12 +1536,20 @@ function calcTotalMs(o) {
   return { entry: entry, freeze: freeze };
 }
 
+function atrasoBloqueado(){
+  if(el('atraso-modal')&&el('atraso-modal').style.display==='flex'){
+    toast('Registre a justificativa do atraso antes de continuar.','warn');
+    if(el('atraso-texto'))el('atraso-texto').focus();
+    return true;
+  }
+  return false;
+}
 function checkAtrasoAtendimento(){
-  if(!ME||!podeAtuarNoSetor('atendimento'))return;
+  if(!ME)return;
   if(el('atraso-modal')&&el('atraso-modal').style.display!=='none')return;
   var LIMITE=10*60*1000;
   var candidatos=PEDIDOS.filter(function(o){
-    return o.setor==='atendimento'&&o.status==='em_andamento'&&(o.prioridade||'retira')==='balcao'&&!o.atraso_justificativa&&!_atrasoShown.has(o.id);
+    return o.setor==='atendimento'&&o.status==='em_andamento'&&(o.prioridade||'retira')==='balcao'&&o.criado_por===ME.login&&!o.atraso_justificativa;
   });
   var alvo=null;
   for(var i=0;i<candidatos.length;i++){
@@ -1567,15 +1578,11 @@ async function salvarJustificativaAtraso(){
     }).eq('id',_atrasoTarget);
     if(res.error)throw res.error;
     upsertPedidoLocal({id:_atrasoTarget,atraso_justificativa:json,atraso_justificativa_at:agora,atraso_justificativa_por:ME.login});
-    _atrasoShown.add(_atrasoTarget);
     el('atraso-modal').style.display='none';
     toast('Justificativa registrada.','ok');
+    setTimeout(checkAtrasoAtendimento,300);
   }catch(e){toast(e.message,'err');}
   finally{ov(false);}
-}
-function pularAtraso(){
-  if(_atrasoTarget)_atrasoShown.add(_atrasoTarget);
-  el('atraso-modal').style.display='none';
 }
 function parseJus(o){
   if(!o||!o.atraso_justificativa)return[];
@@ -1747,6 +1754,7 @@ function renderCard(o,setor){
   '</div>';
 }
 async function enviar(id,destino){
+  if(atrasoBloqueado())return;
   ov(true);
   try{
     var agora=new Date().toISOString();
@@ -1761,6 +1769,7 @@ async function enviar(id,destino){
   finally{ov(false);}
 }
 async function confirmarRec(id){
+  if(atrasoBloqueado())return;
   ov(true);
   try{
     var o=PEDIDOS.find(function(p){return p.id===id;});
@@ -1785,6 +1794,7 @@ async function confirmarRec(id){
   finally{ov(false);}
 }
 function openNota(id){
+  if(atrasoBloqueado())return;
   _notaTarget=id;
   el('nota-num').value='';
   el('nota-valor').value='';
@@ -1859,6 +1869,7 @@ async function confirmarNota(){
   finally{ov(false);_notaTarget=null;}
 }
 async function chamarBalcao(id){
+  if(atrasoBloqueado())return;
   ov(true);
   try{
     var pedido=getPedidoById(id);
@@ -2923,6 +2934,7 @@ function toggleFiltroVencidos() {
 }
 
 async function enviarAgRetira(id) {
+  if(atrasoBloqueado())return;
   ov(true);
   try {
     var pedido = getPedidoById(id);
