@@ -1051,17 +1051,13 @@ async function restoreSession(){
     if(!saved || !saved.login || !saved.senha)return;
 
     ov(true);
-    var res=await sb.from('usuarios').select('*')
-      .eq('login', saved.login)
-      .eq('senha', saved.senha)
-      .eq('ativo', true)
-      .single();
-    if(res.error || !res.data){
+    var res=await sb.rpc('fn_login_call_order',{p_login:saved.login,p_senha:saved.senha});
+    if(res.error || !res.data || !res.data.ok){
       clearSession();
       return;
     }
 
-    applyLoggedUser(res.data);
+    applyLoggedUser(res.data.usuario);
     allHide();
     el('screen-painel').classList.add('active');
     await fetchPedidos();
@@ -1274,10 +1270,12 @@ async function doLogin(){
   if(!l||!p){el('lerr').textContent='Preencha usuário e senha.';return;}
   ov(true);
   try{
-    var res=await sb.from('usuarios').select('*').eq('login',l).eq('senha',p).eq('ativo',true).single();
-    if(res.error||!res.data){el('lerr').textContent='Usuário ou senha inválidos.';return;}
-    applyLoggedUser(res.data);
-    saveSession(res.data);
+    var res=await sb.rpc('fn_login_call_order',{p_login:l,p_senha:p});
+    if(res.error){el('lerr').textContent='Falha ao entrar. Tente novamente.';return;}
+    if(!res.data||!res.data.ok){el('lerr').textContent=(res.data&&res.data.erro)||'Usuário ou senha inválidos.';return;}
+    var _u=res.data.usuario;
+    applyLoggedUser(_u);
+    saveSession(Object.assign({},_u,{senha:p}));
     allHide();
     el('screen-painel').classList.add('active');
     await fetchPedidos();
@@ -2738,7 +2736,15 @@ async function alterarSenha(){
   if(nova!==conf){el('s-err').textContent='Nova senha e confirmação não coincidem.';return;}
   if(nova.length<4){el('s-err').textContent='Mínimo 4 caracteres.';return;}
   ov(true);
-  try{var res=await sb.from('usuarios').select('id').eq('login',ME.login).eq('senha',atual).single();if(res.error||!res.data){el('s-err').textContent='Senha atual incorreta.';return;}await sb.from('usuarios').update({senha:nova}).eq('id',ME.id);toast('Senha alterada!','ok');['s-atual','s-nova','s-conf'].forEach(function(i){el(i).value='';});}catch(e){el('s-err').textContent=e.message;}finally{ov(false);}
+  try{
+    var res=await sb.rpc('fn_trocar_senha_call_order',{p_login:ME.login,p_atual:atual,p_nova:nova});
+    if(res.error){el('s-err').textContent='Falha ao alterar a senha.';return;}
+    if(!res.data||!res.data.ok){el('s-err').textContent=(res.data&&res.data.erro)||'Senha atual incorreta.';return;}
+    /* mantém a sessão válida com a nova senha */
+    try{var _s=JSON.parse(localStorage.getItem(SESSION_KEY)||'{}');_s.senha=nova;localStorage.setItem(SESSION_KEY,JSON.stringify(_s));}catch(e2){}
+    toast('Senha alterada!','ok');
+    ['s-atual','s-nova','s-conf'].forEach(function(i){el(i).value='';});
+  }catch(e){el('s-err').textContent=e.message;}finally{ov(false);}
 }
 // TV Pública
 function unlockTVAudio() {
