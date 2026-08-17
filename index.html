@@ -1182,14 +1182,10 @@ async function submitOccurrenceModal(){
     }
 
     if(_occCtx.modo==='exclusao'){
-      // Delete related records so pedido number can be reused
-      await Promise.all([
-        sb.from('ocorrencias').delete().eq('pedido_id',_occCtx.id),
-        sb.from('movimentacoes').delete().eq('pedido_id',_occCtx.id),
-        sb.from('confirmacoes').delete().eq('pedido_id',_occCtx.id)
-      ]);
-      var res3=await sb.from('pedidos').delete().eq('id',_occCtx.id);
+      /* exclusão em cascata via RPC — remove filhos e o pedido numa só chamada */
+      var res3=await sb.rpc('fn_excluir_pedido_call_order',{p_pedido_id:_occCtx.id});
       if(res3.error)throw res3.error;
+      if(!res3.data||!res3.data.ok)throw new Error((res3.data&&res3.data.erro)||'Não foi possível excluir o pedido.');
       PEDIDOS=PEDIDOS.filter(function(p){return p.id!==_occCtx.id;});
       toast('Pedido #'+pedido.numero+' excluído permanentemente.','warn');
     }
