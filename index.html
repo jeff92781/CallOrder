@@ -1322,7 +1322,7 @@ async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
   var res=await sb.from('pedidos')
     .select('*')
-    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira')
+    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,and(status.eq.balcao_chamado,pendente_desde.gte.'+hoje.toISOString()+'),status.eq.ag_retira')
     .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
 }
@@ -2862,7 +2862,7 @@ async function iniciarTVPublica(){
       var hoje=new Date();hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos')
         .select('*')
-        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,status.eq.balcao_chamado,status.eq.ag_retira')
+        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,and(status.eq.balcao_chamado,pendente_desde.gte.'+hoje.toISOString()+'),status.eq.ag_retira')
         .order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       var snap = buildSnapshot(_tvPub);
