@@ -1026,6 +1026,7 @@ function refreshPedidosSoon(ms){
 
 // ── MUDANÇA 4: Polling de 8s em vez de 3s (realtime já cobre o instantâneo) ──
 function startPolling(){
+  if(_pausado)return;
   if(_pollTi)clearInterval(_pollTi);
   _pollTi=setInterval(function(){
     if(!ME)return;
@@ -1034,7 +1035,7 @@ function startPolling(){
   /* checagem de atraso independente do render — dispara mesmo sem mudança de dados */
   if(_atrasoTi)clearInterval(_atrasoTi);
   _atrasoTi=setInterval(function(){
-    if(!ME)return;
+    if(!ME||_pausado)return;
     if(typeof telaAtiva==='function'&&telaAtiva()!=='screen-painel')return;
     checkAtrasoAtendimento();
   },20000);
@@ -1318,11 +1319,23 @@ function startRealtime(){
     atualizarTelasAtivas();
   }).subscribe();
 }
+// ── Filtro do kanban e da TV (09/11/2026) ──
+// Antes trazia TODO pedido em balcao_chamado desde março (~5.900), batendo no teto
+// de 1.000 linhas a cada atualização. balcao_chamado é status final do balcão:
+// só entra se foi chamado hoje (a TV precisa dele para anunciar).
+// Pendência aberta continua vindo, qualquer que seja a data.
+function filtroPedidosAtivos(hoje){
+  var h=hoje.toISOString();
+  return 'entrada_at.gte.'+h+
+    ',status.in.(em_andamento,aguardando,pronto_balcao,ag_retira)'+
+    ',and(status.eq.balcao_chamado,pendente_desde.gte.'+h+')'+
+    ',and(tem_pendencia.is.true,pendencia_status.eq.aberta)';
+}
 async function fetchPedidos(){
   var hoje=new Date();hoje.setHours(0,0,0,0);
   var res=await sb.from('pedidos')
     .select('*')
-    .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,and(status.eq.balcao_chamado,pendente_desde.gte.'+hoje.toISOString()+'),status.eq.ag_retira')
+    .or(filtroPedidosAtivos(hoje))
     .order('entrada_at',{ascending:false});
   PEDIDOS=res.data||[];
 }
@@ -2858,11 +2871,14 @@ async function iniciarTVPublica(){
   },1000);
 
   async function carregarTVPublica(){
+    if(!tvNoHorario()){ mostrarTVFora(true); return; }
+    if(mostrarTVFora(false)) _lastTVPubSnap='';
+    if(document.hidden) return;
     try{
       var hoje=new Date();hoje.setHours(0,0,0,0);
       var res=await sb.from('pedidos')
         .select('*')
-        .or('entrada_at.gte.'+hoje.toISOString()+',status.eq.em_andamento,status.eq.aguardando,status.eq.pronto_balcao,and(status.eq.balcao_chamado,pendente_desde.gte.'+hoje.toISOString()+'),status.eq.ag_retira')
+        .or(filtroPedidosAtivos(hoje))
         .order('entrada_at',{ascending:false});
       _tvPub=res.data||[];
       var snap = buildSnapshot(_tvPub);
@@ -2874,6 +2890,7 @@ async function iniciarTVPublica(){
     }catch(e){}
   }
 
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) carregarTVPublica(); });
   await carregarTVPublica();
   setInterval(carregarTVPublica, 30000);
 }
@@ -2887,6 +2904,90 @@ function renderTVPub(){
   if(el('tvp-done'))el('tvp-done').textContent=r.doneCount;
   if(el('tvp-active'))el('tvp-active').textContent=r.activeCount;
 }
+// ── Economia de tráfego (09/11/2026) ──────────────────────────────────────
+// PC logado: pausa polling + realtime após 15 min sem interação (tela de
+// "Pausado", clique para continuar) ou após 2 min com a aba oculta (volta
+// sozinho quando a aba fica visível). TV (?tv=1): só atualiza seg–sáb das
+// 08:15 às 19:00; domingo desligada. Fora do horário não consulta o banco.
+const OCIOSO_MS = 15*60000;
+const OCULTA_MS = 2*60000;
+const TV_HORA_INI = 8*60+15;   // 08:15
+const TV_HORA_FIM = 19*60;     // 19:00
+const MODO_TV = window.location.search.indexOf('tv=1')>=0;
+var _pausado=false, _pausaMotivo='', _ultimaAtividade=Date.now(), _ocultaDesde=null, _tvFora=false;
+
+function overlayEconomia(){
+  var o=document.getElementById('economia-overlay');
+  if(o)return o;
+  o=document.createElement('div');
+  o.id='economia-overlay';
+  o.style.cssText='position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(11,17,33,0.94);color:#e8edf5;font-family:var(--font-mono);text-align:center;padding:24px;cursor:pointer';
+  o.innerHTML='<div id="eco-tit" style="font-family:var(--font-head);font-size:28px;font-weight:700;color:#22d3a7"></div><div id="eco-sub" style="font-size:15px;color:rgba(232,237,245,0.6);max-width:520px"></div>';
+  o.addEventListener('click',function(){ if(_pausaMotivo==='ocioso')retomarApp(); });
+  document.body.appendChild(o);
+  return o;
+}
+function mostrarOverlay(tit,sub){
+  var o=overlayEconomia();
+  document.getElementById('eco-tit').textContent=tit;
+  document.getElementById('eco-sub').textContent=sub;
+  o.style.display='flex';
+}
+function esconderOverlay(){ var o=document.getElementById('economia-overlay'); if(o)o.style.display='none'; }
+
+function pausarApp(motivo){
+  if(_pausado||!ME)return;
+  _pausado=true; _pausaMotivo=motivo;
+  stopPolling();
+  if(_ch){ try{sb.removeChannel(_ch);}catch(e){} _ch=null; }
+  if(motivo==='ocioso')mostrarOverlay('Pausado por inatividade','Sem uso há 15 minutos. Clique em qualquer lugar ou pressione uma tecla para continuar.');
+}
+function retomarApp(){
+  if(!_pausado)return;
+  _pausado=false; _pausaMotivo='';
+  _ultimaAtividade=Date.now();
+  esconderOverlay();
+  if(!ME)return;
+  startRealtime(); startPolling(); refreshUI();
+}
+
+['mousemove','mousedown','keydown','touchstart','wheel','scroll'].forEach(function(ev){
+  window.addEventListener(ev,function(){
+    _ultimaAtividade=Date.now();
+    if(ev==='keydown'&&_pausado&&_pausaMotivo==='ocioso')retomarApp();
+  },{passive:true,capture:true});
+});
+document.addEventListener('visibilitychange',function(){
+  if(MODO_TV)return;
+  if(document.hidden){ _ocultaDesde=Date.now(); }
+  else{
+    _ocultaDesde=null; _ultimaAtividade=Date.now();
+    if(_pausado&&_pausaMotivo==='oculta')retomarApp();
+  }
+});
+setInterval(function(){
+  if(MODO_TV||!ME||_pausado)return;
+  var agora=Date.now();
+  if(_ocultaDesde&&agora-_ocultaDesde>OCULTA_MS){ pausarApp('oculta'); return; }
+  if(agora-_ultimaAtividade>OCIOSO_MS)pausarApp('ocioso');
+},30000);
+
+function tvNoHorario(d){
+  d=d||new Date();
+  if(d.getDay()===0)return false;
+  var m=d.getHours()*60+d.getMinutes();
+  return m>=TV_HORA_INI && m<TV_HORA_FIM;
+}
+// retorna true quando a TV acabou de voltar do "fora do horário"
+function mostrarTVFora(fora){
+  if(fora){
+    if(!_tvFora){ _tvFora=true; mostrarOverlay('Fora do expediente','O painel volta a atualizar automaticamente às 08:15 (segunda a sábado).'); }
+    return false;
+  }
+  if(_tvFora){ _tvFora=false; esconderOverlay(); return true; }
+  return false;
+}
+
 if(window.location.search.indexOf('tv=1')>=0){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
   el('screen-tv-pub').style.display='block';
